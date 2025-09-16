@@ -10,6 +10,12 @@ const ACTIVE_DAY_STORAGE_KEY = "rpe6_active_day";
 
 type FieldKey = "weight" | "repsOrSec" | "rpe" | "done";
 
+type ConfirmState = {
+  message: string;
+  confirmLabel?: string;
+  onConfirm: () => void;
+};
+
 function classNames(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
@@ -92,8 +98,10 @@ export default function HomePage() {
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [newWeekLoading, setNewWeekLoading] = useState(false);
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRef = useRef(false);
   const initialLoadRef = useRef(true);
@@ -115,10 +123,13 @@ export default function HomePage() {
         setWeek(data.week);
         setSaveState("saved");
         setError(null);
+        setNotice(null);
+        setConfirmState(null);
       } catch (err) {
         console.error(err);
         if (!isMounted) return;
         setError("Unable to load workouts. Check your connection and try again.");
+        setNotice(null);
       } finally {
         if (isMounted) {
           setLoading(false);
@@ -213,6 +224,20 @@ export default function HomePage() {
   function markPending() {
     pendingRef.current = true;
     setSaveState("saving");
+    setNotice(null);
+    setConfirmState(null);
+  }
+
+  function dismissError() {
+    setError(null);
+  }
+
+  function dismissNotice() {
+    setNotice(null);
+  }
+
+  function cancelConfirm() {
+    setConfirmState(null);
   }
 
   function updateSet(
@@ -250,16 +275,11 @@ export default function HomePage() {
     markPending();
   }
 
-  function handleResetDay() {
-    if (!week || !activeDay) return;
-    const confirmMessage = `Clear entries for ${activeDay.name}?`;
-    if (typeof window !== "undefined" && !window.confirm(confirmMessage)) {
-      return;
-    }
+  function resetDay(dayIndex: number, dayName: string) {
     setWeek((prev) => {
       if (!prev) return prev;
       const days = prev.days.map((day, dIdx) => {
-        if (dIdx !== activeDayIndex) return day;
+        if (dIdx !== dayIndex) return day;
         const exercises = day.exercises.map((exercise) => ({
           ...exercise,
           sets: exercise.sets.map((set) => ({
@@ -275,22 +295,33 @@ export default function HomePage() {
       return { ...prev, days };
     });
     markPending();
+    setNotice(`${dayName} cleared.`);
   }
 
-  async function handleNewWeek() {
-    if (!week || !activeDay) return;
-    if (newWeekLoading) return;
-    if (typeof window !== "undefined") {
-      const confirmed = window.confirm("Archive current week and start a new one?");
-      if (!confirmed) return;
-    }
+  function handleResetDay() {
+    if (!week) return;
+    const targetDay = week.days[activeDayIndex];
+    if (!targetDay) return;
+    setConfirmState({
+      message: `Clear entries for ${targetDay.name}?`,
+      confirmLabel: "Clear day",
+      onConfirm: () => {
+        setConfirmState(null);
+        resetDay(activeDayIndex, targetDay.name);
+      }
+    });
+  }
 
+  async function startNewWeek(currentWeek: WeekResponse) {
     try {
       setNewWeekLoading(true);
+      setNotice(null);
+      setSaveState("saving");
+      setError(null);
       const response = await fetch("/api/week/new", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: week.id, days: week.days })
+        body: JSON.stringify({ id: currentWeek.id, days: currentWeek.days })
       });
       if (!response.ok) {
         throw new Error(`Request failed with status ${response.status}`);
@@ -302,15 +333,29 @@ export default function HomePage() {
       setActiveDayIndex(0);
       setSaveState("saved");
       setError(null);
-      if (typeof window !== "undefined") {
-        window.alert("New week loaded! Your previous week was archived.");
-      }
+      setNotice("New week loaded! Your previous week was archived.");
     } catch (err) {
       console.error(err);
       setError("Unable to start a new week. Please try again.");
+      setSaveState("error");
+      setNotice(null);
     } finally {
       setNewWeekLoading(false);
     }
+  }
+
+  function handleNewWeek() {
+    if (!week) return;
+    if (newWeekLoading) return;
+    const currentWeek = week;
+    setConfirmState({
+      message: "Archive current week and start a new one?",
+      confirmLabel: "Start new week",
+      onConfirm: () => {
+        setConfirmState(null);
+        void startNewWeek(currentWeek);
+      }
+    });
   }
 
   function handleExport() {
@@ -361,8 +406,36 @@ export default function HomePage() {
       </header>
 
       {error && (
-        <div className="tip" style={{ marginBottom: "10px", borderColor: "rgba(239,68,68,0.35)" }}>
-          <strong>Error:</strong> {error}
+        <div className="banner error">
+          <span>
+            <strong>Error:</strong> {error}
+          </span>
+          <button className="btn ghost" onClick={dismissError} type="button">
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {notice && (
+        <div className="banner success">
+          <span>{notice}</span>
+          <button className="btn ghost" onClick={dismissNotice} type="button">
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {confirmState && (
+        <div className="confirm-banner">
+          <span>{confirmState.message}</span>
+          <div className="confirm-actions">
+            <button className="btn warn" onClick={confirmState.onConfirm} type="button">
+              {confirmState.confirmLabel ?? "Confirm"}
+            </button>
+            <button className="btn ghost" onClick={cancelConfirm} type="button">
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 

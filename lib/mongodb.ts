@@ -5,27 +5,33 @@ declare global {
   var _mongoClientPromise: Promise<MongoClient> | undefined;
 }
 
-const uri = process.env.MONGODB_URI;
+let cachedClientPromise: Promise<MongoClient> | undefined;
 
-if (!uri) {
-  throw new Error("Missing MONGODB_URI environment variable");
-}
+function getClientPromise(): Promise<MongoClient> {
+  const uri = process.env.MONGODB_URI;
 
-let clientPromise: Promise<MongoClient>;
-
-if (process.env.NODE_ENV === "development") {
-  if (!globalThis._mongoClientPromise) {
-    const client = new MongoClient(uri);
-    globalThis._mongoClientPromise = client.connect();
+  if (!uri) {
+    throw new Error("Missing MONGODB_URI environment variable");
   }
-  clientPromise = globalThis._mongoClientPromise!;
-} else {
-  const client = new MongoClient(uri);
-  clientPromise = client.connect();
+
+  if (process.env.NODE_ENV === "development") {
+    if (!globalThis._mongoClientPromise) {
+      const client = new MongoClient(uri);
+      globalThis._mongoClientPromise = client.connect();
+    }
+    return globalThis._mongoClientPromise!;
+  }
+
+  if (!cachedClientPromise) {
+    const client = new MongoClient(uri);
+    cachedClientPromise = client.connect();
+  }
+
+  return cachedClientPromise;
 }
 
 export async function getDb() {
-  const client = await clientPromise;
+  const client = await getClientPromise();
   const dbName = process.env.MONGODB_DB || "workout";
   return client.db(dbName);
 }

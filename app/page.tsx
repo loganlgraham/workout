@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { DayEntry, WeekResponse } from "@/lib/week";
@@ -396,12 +397,17 @@ export default function HomePage() {
             3 days/week • “Somewhat hard, still comfortable” • Auto-saves to your account
           </div>
         </div>
-        <div className="legend">
-          <span className="badge">
-            <strong>RPE 6</strong> ≈ 4 reps in reserve
-          </span>
-          <span className="badge">Breathe smooth</span>
-          <span className="badge">No maxing out</span>
+        <div className="topbar">
+          <Link className="btn ghost" href="/workouts">
+            📘 View saved weeks
+          </Link>
+          <div className="legend">
+            <span className="badge">
+              <strong>RPE 6</strong> ≈ 4 reps in reserve
+            </span>
+            <span className="badge">Breathe smooth</span>
+            <span className="badge">No maxing out</span>
+          </div>
         </div>
       </header>
 

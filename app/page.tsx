@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { DayEntry, WeekResponse } from "@/lib/week";
@@ -381,7 +382,7 @@ export default function HomePage() {
     return (
       <div className="wrap">
         <h1>30-Min Gym Checklist — Beginner (RPE ~6)</h1>
-        <p className="sub">We couldn't load your workouts.</p>
+        <p className="sub">We couldn’t load your workouts.</p>
         {error && <p className="sub dangerc">{error}</p>}
       </div>
     );
@@ -396,12 +397,17 @@ export default function HomePage() {
             3 days/week • “Somewhat hard, still comfortable” • Auto-saves to your account
           </div>
         </div>
-        <div className="legend">
-          <span className="badge">
-            <strong>RPE 6</strong> ≈ 4 reps in reserve
-          </span>
-          <span className="badge">Breathe smooth</span>
-          <span className="badge">No maxing out</span>
+        <div className="topbar">
+          <Link className="btn ghost" href="/workouts">
+            📘 View saved weeks
+          </Link>
+          <div className="legend">
+            <span className="badge">
+              <strong>RPE 6</strong> ≈ 4 reps in reserve
+            </span>
+            <span className="badge">Breathe smooth</span>
+            <span className="badge">No maxing out</span>
+          </div>
         </div>
       </header>
 
@@ -488,7 +494,7 @@ export default function HomePage() {
 
       <div className="grid">
         <div className="card">
-          <h2>Today's Plan</h2>
+          <h2>Today’s Plan</h2>
           {!activeDay ? (
             <p>No day selected.</p>
           ) : (

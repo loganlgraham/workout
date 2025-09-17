@@ -381,7 +381,7 @@ export default function HomePage() {
     return (
       <div className="wrap">
         <h1>30-Min Gym Checklist — Beginner (RPE ~6)</h1>
-        <p className="sub">We couldn't load your workouts.</p>
+        <p className="sub">We couldn’t load your workouts.</p>
         {error && <p className="sub dangerc">{error}</p>}
       </div>
     );
@@ -488,7 +488,7 @@ export default function HomePage() {
 
       <div className="grid">
         <div className="card">
-          <h2>Today's Plan</h2>
+          <h2>Today’s Plan</h2>
           {!activeDay ? (
             <p>No day selected.</p>
           ) : (

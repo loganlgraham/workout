@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { DayEntry, WeekResponse } from "@/lib/week";
@@ -46,51 +48,105 @@ function getStatusClass(state: SaveState) {
   }
 }
 
-function exportWeekToCsv(week: WeekResponse) {
-  const rows: string[][] = [[
-    "weekOf",
-    "templateTitle",
-    "day",
-    "exercise",
-    "set",
-    "weight",
-    "repsOrSec",
-    "rpe",
-    "done",
-    "exportedAt"
-  ]];
-  const now = new Date().toISOString();
+function getDayTotals(day: DayEntry) {
+  return day.exercises.reduce(
+    (acc, exercise) => {
+      const doneSets = exercise.sets.filter((set) => set.done).length;
+      acc.completed += doneSets;
+      acc.total += exercise.sets.length;
+      return acc;
+    },
+    { completed: 0, total: 0 }
+  );
+}
+
+function collectUnique(values: string[]) {
+  const trimmed = values
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  return Array.from(new Set(trimmed));
+}
+
+function buildWeekShareSummary(week: WeekResponse) {
+  let aggregateCompleted = 0;
+  let aggregateTotal = 0;
 
   week.days.forEach((day) => {
-    day.exercises.forEach((exercise) => {
-      exercise.sets.forEach((set) => {
-        rows.push([
-          week.weekOf,
-          week.templateTitle,
-          day.name,
-          exercise.name,
-          String(set.set),
-          set.weight,
-          set.repsOrSec,
-          set.rpe,
-          set.done ? "1" : "0",
-          now
-        ]);
-      });
-    });
+    const { completed, total } = getDayTotals(day);
+    aggregateCompleted += completed;
+    aggregateTotal += total;
   });
 
-  const csv = rows
-    .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","))
-    .join("\n");
+  const lines: string[] = [
+    `Fitmotion · Week of ${week.weekOf}`,
+    `${week.templateTitle} — ${week.description}`,
+    `Progress: ${aggregateCompleted}/${aggregateTotal} sets complete`,
+    ""
+  ];
 
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `rpe6-checklist-${week.weekOf}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
+  week.days.forEach((day) => {
+    const { completed, total } = getDayTotals(day);
+    lines.push(`${day.name}: ${completed}/${total} sets complete`);
+
+    day.exercises.forEach((exercise) => {
+      const doneSets = exercise.sets.filter((set) => set.done).length;
+      const weights = collectUnique(exercise.sets.map((set) => set.weight));
+      const repsOrSeconds = collectUnique(exercise.sets.map((set) => set.repsOrSec));
+      const rpes = collectUnique(exercise.sets.map((set) => set.rpe));
+      const detailParts: string[] = [];
+
+      if (weights.length > 0) {
+        detailParts.push(`wt ${weights.join("/")}`);
+      }
+      if (repsOrSeconds.length > 0) {
+        detailParts.push(`${exercise.type === "seconds" ? "sec" : "reps"} ${repsOrSeconds.join("/")}`);
+      }
+      if (rpes.length > 0) {
+        detailParts.push(`RPE ${rpes.join("/")}`);
+      }
+      detailParts.push(`${doneSets}/${exercise.sets.length} done`);
+
+      lines.push(`  • ${exercise.name}: ${detailParts.join(" · ")}`);
+    });
+
+    lines.push("");
+  });
+
+  lines.push("Shared from Fitmotion Trainer");
+
+  return lines.join("\n").trim();
+}
+
+async function copyToClipboard(text: string) {
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (error) {
+      console.error("Clipboard API failed", error);
+    }
+  }
+
+  if (typeof document !== "undefined") {
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.top = "-9999px";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      return true;
+    } catch (error) {
+      console.error("execCommand copy failed", error);
+    }
+  }
+
+  return false;
 }
 
 export default function HomePage() {
@@ -358,15 +414,47 @@ export default function HomePage() {
     });
   }
 
-  function handleExport() {
+  async function handleShare() {
     if (!week) return;
-    exportWeekToCsv(week);
-  }
 
-  function handlePrint() {
-    if (typeof window !== "undefined") {
-      window.print();
+    setNotice(null);
+
+    const summary = buildWeekShareSummary(week);
+
+    if (typeof navigator !== "undefined" && "share" in navigator) {
+      const shareNavigator = navigator as Navigator & {
+        share: (data: ShareData) => Promise<void>;
+        canShare?: (data: ShareData) => boolean;
+      };
+
+      const shareData: ShareData = {
+        title: `Fitmotion · Week of ${week.weekOf}`,
+        text: summary
+      };
+
+      try {
+        if (!shareNavigator.canShare || shareNavigator.canShare(shareData)) {
+          await shareNavigator.share(shareData);
+          setNotice("Share sheet opened — send it to complete.");
+          return;
+        }
+      } catch (error) {
+        const domError = error as DOMException | undefined;
+        if (domError?.name === "AbortError") {
+          return;
+        }
+        console.error("Share failed", error);
+      }
     }
+
+    const copied = await copyToClipboard(summary);
+
+    if (copied) {
+      setNotice("Week summary copied. Paste it anywhere to share.");
+      return;
+    }
+
+    setError("Sharing isn't supported in this browser. Try copying your progress manually.");
   }
 
   if (loading && !week) {
@@ -380,28 +468,72 @@ export default function HomePage() {
   if (!week) {
     return (
       <div className="wrap">
-        <h1>30-Min Gym Checklist — Beginner (RPE ~6)</h1>
-        <p className="sub">We couldn't load your workouts.</p>
-        {error && <p className="sub dangerc">{error}</p>}
+        <header className="hero hero-compact">
+          <div className="hero-heading">
+            <div className="brand-lockup">
+              <div className="brand-logo-wrap">
+                <Image
+                  alt="Fitmotion"
+                  className="brand-logo"
+                  height={56}
+                  sizes="64px"
+                  src="/fitmotion-logo.svg"
+                  width={56}
+                />
+              </div>
+              <div className="brand-text">
+                <p className="eyebrow">Fitmotion Trainer</p>
+                <h1>30-Min Gym Checklist — Beginner (RPE ~6)</h1>
+              </div>
+            </div>
+            <p className="hero-sub">We couldn’t load your workouts.</p>
+          </div>
+        </header>
+        {error && (
+          <div className="banner error">
+            <span>{error}</span>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
     <div className="wrap">
-      <header>
-        <div>
-          <h1>30-Min Gym Checklist — Beginner (RPE ~6)</h1>
-          <div className="sub">
-            3 days/week • “Somewhat hard, still comfortable” • Auto-saves to your account
+      <header className="hero">
+        <div className="hero-heading">
+          <div className="brand-lockup">
+            <div className="brand-logo-wrap">
+              <Image
+                alt="Fitmotion"
+                className="brand-logo"
+                height={56}
+                priority
+                sizes="64px"
+                src="/fitmotion-logo.svg"
+                width={56}
+              />
+            </div>
+            <div className="brand-text">
+              <p className="eyebrow">Fitmotion Trainer</p>
+              <h1>30-Min Gym Checklist — Beginner (RPE ~6)</h1>
+            </div>
           </div>
+          <p className="hero-sub">
+            3 days/week • “Somewhat hard, still comfortable” • Auto-saves to your account
+          </p>
         </div>
-        <div className="legend">
-          <span className="badge">
-            <strong>RPE 6</strong> ≈ 4 reps in reserve
-          </span>
-          <span className="badge">Breathe smooth</span>
-          <span className="badge">No maxing out</span>
+        <div className="hero-actions">
+          <Link className="btn primary" href="/workouts">
+            View saved weeks
+          </Link>
+          <div className="legend">
+            <span className="badge">
+              <strong>RPE 6</strong> ≈ 4 reps in reserve
+            </span>
+            <span className="badge">Smooth breathing</span>
+            <span className="badge">No maxing out</span>
+          </div>
         </div>
       </header>
 
@@ -460,11 +592,16 @@ export default function HomePage() {
           </div>
           <span className="spacer" />
           <span className={getStatusClass(saveState)}>{formatStatus(saveState)}</span>
-          <button className="btn" onClick={handlePrint} type="button" title="Print or Save as PDF">
-            🖨️ Print
-          </button>
-          <button className="btn" onClick={handleExport} type="button" title="Export your data as CSV">
-            ⬇️ Export CSV
+          <button
+            className="btn"
+            onClick={() => {
+              void handleShare();
+            }}
+            type="button"
+            title="Share a summary of your progress"
+          >
+            <span aria-hidden>📤</span>
+            <span className="btn-label">Share</span>
           </button>
           <button
             className="btn warn"
@@ -488,7 +625,7 @@ export default function HomePage() {
 
       <div className="grid">
         <div className="card">
-          <h2>Today's Plan</h2>
+          <h2>Today’s Plan</h2>
           {!activeDay ? (
             <p>No day selected.</p>
           ) : (
@@ -594,7 +731,7 @@ export default function HomePage() {
                 <strong>3)</strong> Check the box ✅ when a set is done. Data saves automatically.
               </li>
               <li>
-                <strong>4)</strong> Tap <em>Print</em> to save a PDF, or <em>Export CSV</em> to download your data.
+                <strong>4)</strong> Tap <em>Share</em> to send a summary to yourself or a friend.
               </li>
             </ul>
           </div>

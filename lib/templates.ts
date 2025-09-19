@@ -281,6 +281,140 @@ export const WEEK_TEMPLATES: WeekTemplate[] = [
         ]
       }
     ]
+  },
+  {
+    key: "apex",
+    title: "Apex Strength & Conditioning",
+    description:
+      "High-threshold push, pull, and legs rotation with power primers and core finishers. Built for experienced lifters who enjoy heavier work.",
+    days: [
+      {
+        id: "day1",
+        shortName: "Day 1",
+        name: "Day 1 — Squat + Press Power",
+        exercises: [
+          {
+            name: "Back Squat (Barbell)",
+            sets: 3,
+            target: "5–8 reps",
+            how: "Brace hard, drive knees out, and stand with intent on each rep.",
+            type: "reps"
+          },
+          {
+            name: "Paused Bench Press",
+            sets: 3,
+            target: "4–6 reps",
+            how: "One-second pause on the chest; press up while keeping shoulders packed.",
+            type: "reps"
+          },
+          {
+            name: "Weighted Pull-Up or Heavy Lat Pulldown",
+            sets: 3,
+            target: "6–8 reps",
+            how: "Pull elbows to your ribs, squeeze, and control the descent.",
+            type: "reps"
+          },
+          {
+            name: "Dumbbell Bulgarian Split Squat",
+            sets: 3,
+            target: "8–10 reps/side",
+            how: "Torso tall; drop the back knee straight down; drive through the front heel.",
+            type: "reps"
+          },
+          {
+            name: "Cable Face Pull",
+            sets: 3,
+            target: "12–15 reps",
+            how: "Elbows high, pull toward your brow, and pause the squeeze.",
+            type: "reps"
+          }
+        ]
+      },
+      {
+        id: "day2",
+        shortName: "Day 2",
+        name: "Day 2 — Pull + Posterior Chain",
+        exercises: [
+          {
+            name: "Trap Bar Deadlift (Heavy)",
+            sets: 3,
+            target: "4–6 reps",
+            how: "Hips down, brace, and push the floor away; finish tall with glutes.",
+            type: "reps"
+          },
+          {
+            name: "Standing Military Press",
+            sets: 3,
+            target: "5–8 reps",
+            how: "Glutes tight, ribs stacked, press overhead without leaning back.",
+            type: "reps"
+          },
+          {
+            name: "Pendlay Row",
+            sets: 3,
+            target: "6–8 reps",
+            how: "Reset each rep on the floor; pull explosively to your sternum.",
+            type: "reps"
+          },
+          {
+            name: "Walking Lunge (Dumbbells)",
+            sets: 3,
+            target: "10–12 steps/side",
+            how: "Short pause between steps, stay tall, and push through the front foot.",
+            type: "reps"
+          },
+          {
+            name: "Decline Sit-Up or Cable Crunch",
+            sets: 3,
+            target: "12–15 reps",
+            how: "Brace abs, pull ribs toward hips, and control the return.",
+            type: "reps"
+          }
+        ]
+      },
+      {
+        id: "day3",
+        shortName: "Day 3",
+        name: "Day 3 — Push/Pull Finisher + Conditioning",
+        exercises: [
+          {
+            name: "Front Squat or Leg Press Power Set",
+            sets: 3,
+            target: "6–8 reps",
+            how: "Elbows tall, drop under control, and drive up without collapsing.",
+            type: "reps"
+          },
+          {
+            name: "Incline Dumbbell Press (Heavy)",
+            sets: 3,
+            target: "6–8 reps",
+            how: "Bench ~30°; lower slow; press together with a strong lockout.",
+            type: "reps"
+          },
+          {
+            name: "Chest-Supported T-Bar Row",
+            sets: 3,
+            target: "8–10 reps",
+            how: "Neutral grip; pull toward low chest; squeeze shoulder blades.",
+            type: "reps"
+          },
+          {
+            name: "Romanian Deadlift (Barbell or Dumbbell)",
+            sets: 3,
+            target: "8–10 reps",
+            how: "Soft knees, hinge at the hips, feel hamstrings, and snap tall.",
+            type: "reps"
+          },
+          {
+            name: "SkiErg or Bike Sprint Intervals",
+            sets: 3,
+            target: "45 sec steady + 15 sec push",
+            how: "Alternate 45s smooth effort with a 15s surge; focus on crisp breathing.",
+            type: "seconds"
+          }
+        ]
+      }
+    ]
   }
 ];
 

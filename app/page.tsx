@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import type { DayEntry, WeekResponse } from "@/lib/week";
 
@@ -11,6 +11,18 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 const ACTIVE_DAY_STORAGE_KEY = "rpe6_active_day";
 
 type FieldKey = "weight" | "repsOrSec" | "rpe" | "done";
+
+type PlanOption = {
+  value: number;
+  key: string;
+  label: string;
+};
+
+const PLAN_OPTIONS: PlanOption[] = [
+  { value: 0, key: "foundation", label: "Beginner" },
+  { value: 1, key: "athletic", label: "Intermediate" },
+  { value: 2, key: "apex", label: "Advanced" }
+];
 
 type ConfirmState = {
   message: string;
@@ -151,6 +163,7 @@ async function copyToClipboard(text: string) {
 
 export default function HomePage() {
   const [week, setWeek] = useState<WeekResponse | null>(null);
+  const [selectedPlanIndex, setSelectedPlanIndex] = useState(0);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -177,6 +190,7 @@ export default function HomePage() {
         pendingRef.current = false;
         initialLoadRef.current = true;
         setWeek(data.week);
+        setSelectedPlanIndex(data.week.templateIndex);
         setSaveState("saved");
         setError(null);
         setNotice(null);
@@ -199,6 +213,12 @@ export default function HomePage() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (week) {
+      setSelectedPlanIndex(week.templateIndex);
+    }
+  }, [week]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -277,6 +297,11 @@ export default function HomePage() {
     return week.days[activeDayIndex] ?? week.days[0];
   }, [week, activeDayIndex]);
 
+  const currentPlanOption = useMemo(() => {
+    const planIndex = week?.templateIndex ?? 0;
+    return PLAN_OPTIONS.find((option) => option.value === planIndex) ?? PLAN_OPTIONS[0];
+  }, [week?.templateIndex]);
+
   function markPending() {
     pendingRef.current = true;
     setSaveState("saving");
@@ -294,6 +319,9 @@ export default function HomePage() {
 
   function cancelConfirm() {
     setConfirmState(null);
+    if (week) {
+      setSelectedPlanIndex(week.templateIndex);
+    }
   }
 
   function updateSet(
@@ -368,16 +396,29 @@ export default function HomePage() {
     });
   }
 
-  async function startNewWeek(currentWeek: WeekResponse) {
+  async function startNewWeek(currentWeek: WeekResponse, templateIndex?: number, successMessage?: string) {
     try {
       setNewWeekLoading(true);
       setNotice(null);
       setSaveState("saving");
       setError(null);
+      const payload: {
+        id: string;
+        days: WeekResponse["days"];
+        templateIndex?: number;
+      } = {
+        id: currentWeek.id,
+        days: currentWeek.days
+      };
+
+      if (typeof templateIndex === "number") {
+        payload.templateIndex = templateIndex;
+      }
+
       const response = await fetch("/api/week/new", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: currentWeek.id, days: currentWeek.days })
+        body: JSON.stringify(payload)
       });
       if (!response.ok) {
         throw new Error(`Request failed with status ${response.status}`);
@@ -386,15 +427,19 @@ export default function HomePage() {
       pendingRef.current = false;
       initialLoadRef.current = true;
       setWeek(data.week);
+      setSelectedPlanIndex(data.week.templateIndex);
       setActiveDayIndex(0);
       setSaveState("saved");
       setError(null);
-      setNotice("New week loaded! Your previous week was archived.");
+      setNotice(successMessage ?? "New week loaded. Your previous week was archived.");
     } catch (err) {
       console.error(err);
       setError("Unable to start a new week. Please try again.");
       setSaveState("error");
       setNotice(null);
+      if (typeof templateIndex === "number") {
+        setSelectedPlanIndex(currentWeek.templateIndex);
+      }
     } finally {
       setNewWeekLoading(false);
     }
@@ -410,6 +455,36 @@ export default function HomePage() {
       onConfirm: () => {
         setConfirmState(null);
         void startNewWeek(currentWeek);
+      }
+    });
+  }
+
+  function handlePlanSelect(event: ChangeEvent<HTMLSelectElement>) {
+    if (!week) return;
+    const nextIndex = Number.parseInt(event.target.value, 10);
+    if (Number.isNaN(nextIndex)) {
+      return;
+    }
+    setSelectedPlanIndex(nextIndex);
+    if (nextIndex === week.templateIndex) {
+      setConfirmState(null);
+      return;
+    }
+
+    const option = PLAN_OPTIONS.find((item) => item.value === nextIndex);
+
+    setConfirmState({
+      message: option
+        ? `Switch to the ${option.label} plan? Your current week will be archived.`
+        : "Switch to the selected plan? Your current week will be archived.",
+      confirmLabel: "Switch plan",
+      onConfirm: () => {
+        setConfirmState(null);
+        void startNewWeek(
+          week,
+          nextIndex,
+          option ? `${option.label} plan ready. Your previous week was archived.` : undefined
+        );
       }
     });
   }
@@ -468,27 +543,26 @@ export default function HomePage() {
   if (!week) {
     return (
       <div className="wrap">
-        <header className="hero hero-compact">
-          <div className="hero-heading">
-            <div className="brand-lockup">
-              <div className="brand-logo-wrap">
+        <header className="hero home-hero">
+          <div className="home-hero__header">
+            <div className="home-hero__brand">
+              <span className="home-hero__logo">
                 <Image
                   alt="Fitmotion"
-                  className="brand-logo"
-                  height={120}
-                  sizes="(max-width: 640px) 200px, 260px"
+                  height={64}
+                  sizes="72px"
                   src="/fitmotion-logo.svg"
                   style={{ width: "100%", height: "auto" }}
-                  width={360}
+                  width={64}
                 />
-              </div>
-              <div className="brand-text">
+              </span>
+              <div>
                 <p className="eyebrow">Fitmotion Trainer</p>
-                <h1>30-Min Gym Checklist — Beginner (RPE ~6)</h1>
+                <h1>Weekly Workouts</h1>
               </div>
             </div>
-            <p className="hero-sub">We couldn’t load your workouts.</p>
           </div>
+          <p className="home-hero__description">We couldn’t load your workouts.</p>
         </header>
         {error && (
           <div className="banner error">
@@ -501,42 +575,52 @@ export default function HomePage() {
 
   return (
     <div className="wrap">
-      <header className="hero">
-        <div className="hero-heading">
-          <div className="brand-lockup">
-            <div className="brand-logo-wrap">
+      <header className="hero home-hero">
+        <div className="home-hero__header">
+          <div className="home-hero__brand">
+            <span className="home-hero__logo">
               <Image
                 alt="Fitmotion"
-                className="brand-logo"
-                height={120}
+                height={64}
                 priority
-                sizes="(max-width: 640px) 200px, 260px"
+                sizes="72px"
                 src="/fitmotion-logo.svg"
                 style={{ width: "100%", height: "auto" }}
-                width={360}
+                width={64}
               />
-            </div>
-            <div className="brand-text">
+            </span>
+            <div>
               <p className="eyebrow">Fitmotion Trainer</p>
-              <h1>30-Min Gym Checklist — Beginner (RPE ~6)</h1>
+              <h1>Weekly Workouts</h1>
             </div>
           </div>
-          <p className="hero-sub">
-            3 days/week • “Somewhat hard, still comfortable” • Auto-saves to your account
-          </p>
-        </div>
-        <div className="hero-actions">
-          <Link className="btn primary" href="/workouts">
+          <Link className="btn ghost home-hero__link" href="/workouts">
             View saved weeks
           </Link>
-          <div className="legend">
-            <span className="badge">
-              <strong>RPE 6</strong> ≈ 4 reps in reserve
-            </span>
-            <span className="badge">Smooth breathing</span>
-            <span className="badge">No maxing out</span>
+        </div>
+        <div className="home-hero__controls">
+          <label className="home-field" htmlFor="plan-level">
+            <span>Level</span>
+            <select
+              className="in"
+              id="plan-level"
+              onChange={handlePlanSelect}
+              value={String(selectedPlanIndex)}
+              disabled={newWeekLoading}
+            >
+              {PLAN_OPTIONS.map((option) => (
+                <option key={option.value} value={String(option.value)}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="home-hero__meta">
+            <span className="home-pill">{currentPlanOption.label} plan</span>
+            <span className="home-pill">{week.templateTitle}</span>
           </div>
         </div>
+        <p className="home-hero__description">{week.description}</p>
       </header>
 
       {error && (
@@ -588,9 +672,6 @@ export default function HomePage() {
               </button>
             ))}
             <span className="pill">Week of {week.weekOf}</span>
-            <span className="pill template-pill" title={week.description}>
-              {week.templateTitle}
-            </span>
           </div>
           <span className="spacer" />
           <span className={getStatusClass(saveState)}>{formatStatus(saveState)}</span>
@@ -640,7 +721,10 @@ export default function HomePage() {
                       <span className="muted small">({exercise.target})</span>
                     </h3>
                   </header>
-                  <div className="how">{exercise.how}</div>
+                  <details className="how">
+                    <summary>Form cues</summary>
+                    <p>{exercise.how}</p>
+                  </details>
                   <div className="sets">
                     <table>
                       <thead>
@@ -715,37 +799,13 @@ export default function HomePage() {
             </div>
           )}
         </div>
-        <div className="card">
-          <h2>How to Use (Beginner-friendly)</h2>
-          <div className="tip">
-            <p>
-              <strong>RPE ~6</strong> = finish each set like you could do ~4 more reps. No straining or holding your breath.
-            </p>
-            <ul>
-              <li>
-                <strong>1)</strong> Pick your day (Day 1 / Day 2 / Day 3).
-              </li>
-              <li>
-                <strong>2)</strong> For each exercise, fill in <em>weight</em>, <em>reps</em> (or seconds), and optionally your
-                <em> RPE</em>.
-              </li>
-              <li>
-                <strong>3)</strong> Check the box ✅ when a set is done. Data saves automatically.
-              </li>
-              <li>
-                <strong>4)</strong> Tap <em>Share</em> to send a summary to yourself or a friend.
-              </li>
-            </ul>
-          </div>
-          <div className="tip" style={{ marginTop: "8px" }}>
-            <p>
-              <strong>Weekly Progress:</strong> If a weight feels easy with smooth form, add 1–2 reps next time or a small weight
-              increase (+2.5–5 lb). If anything hurts or feels “throbby,” rest more or go lighter.
-            </p>
-            <p style={{ marginTop: "8px" }}>
-              <strong>Template:</strong> {week.templateTitle} — {week.description}
-            </p>
-          </div>
+        <div className="card guide-card">
+          <h2>Quick tips</h2>
+          <ul className="guide-list">
+            <li>Pick a day, log your sets, and check them off as you go.</li>
+            <li>Use the Share button 📤 to send the week anywhere.</li>
+            <li>Keep reps smooth with 3–4 in the tank—then load up next time.</li>
+          </ul>
         </div>
       </div>
     </div>

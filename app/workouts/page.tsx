@@ -1,52 +1,12 @@
 import Link from "next/link";
 
 import { getDb } from "@/lib/mongodb";
-import { serializeWeek, type DayEntry, type WeekDocument, type WeekResponse } from "@/lib/week";
+import { serializeWeek, type WeekDocument } from "@/lib/week";
+
+import { ArchiveViewer } from "./archive-viewer";
+import type { WeekListEntry } from "./types";
 
 export const dynamic = "force-dynamic";
-
-type WeekListEntry = WeekResponse & {
-  status: WeekDocument["status"];
-  archivedAt: string | null;
-};
-
-function formatDateTime(iso: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  }).format(new Date(iso));
-}
-
-function formatWeekOf(weekOf: string) {
-  const date = new Date(`${weekOf}T00:00:00.000Z`);
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeZone: "UTC"
-  }).format(date);
-}
-
-function countDaySets(day: DayEntry) {
-  return day.exercises.reduce(
-    (acc, exercise) => {
-      acc.total += exercise.sets.length;
-      acc.completed += exercise.sets.filter((set) => set.done).length;
-      return acc;
-    },
-    { completed: 0, total: 0 }
-  );
-}
-
-function countWeekSets(week: WeekResponse) {
-  return week.days.reduce(
-    (acc, day) => {
-      const { completed, total } = countDaySets(day);
-      acc.completed += completed;
-      acc.total += total;
-      return acc;
-    },
-    { completed: 0, total: 0 }
-  );
-}
 
 async function fetchWeeks(): Promise<WeekListEntry[]> {
   const db = await getDb();
@@ -94,12 +54,6 @@ export default async function WorkoutsPage() {
           </div>
         </header>
 
-        {!loadError && weeks.length > 0 && (
-          <p className="archive-count" role="status">
-            Showing all {weeks.length} saved week{weeks.length === 1 ? "" : "s"}.
-          </p>
-        )}
-
         {loadError ? (
           <div className="banner error">
             <span>{loadError}</span>
@@ -112,126 +66,7 @@ export default async function WorkoutsPage() {
             </p>
           </div>
         ) : (
-          <div className="workout-list">
-            {weeks.map((week) => {
-              const { completed, total } = countWeekSets(week);
-              const isActive = week.status === "active";
-              const formattedWeek = formatWeekOf(week.weekOf);
-
-              return (
-                <article className="card workout-card" key={week.id}>
-                  <div className="workout-header">
-                    <div>
-                      <h2>Week of {formattedWeek}</h2>
-                      <ul className="workout-summary-grid">
-                        <li className="summary-item">
-                          <span className="summary-label">Days logged</span>
-                          <span className="summary-value-row">
-                            <span className="summary-value">{week.days.length}</span>
-                            <span className="summary-subvalue">
-                              day{week.days.length === 1 ? "" : "s"}
-                            </span>
-                          </span>
-                        </li>
-                        <li className="summary-item">
-                          <span className="summary-label">Sets complete</span>
-                          <span className="summary-value-row">
-                            <span className="summary-value">{completed}</span>
-                            <span className="summary-subvalue">of {total}</span>
-                          </span>
-                        </li>
-                        <li className="summary-item">
-                          <span className="summary-label">Last updated</span>
-                          <span className="summary-value summary-value-compact">
-                            {formatDateTime(week.updatedAt)}
-                          </span>
-                        </li>
-                      </ul>
-                    </div>
-                    <div className="workout-tags">
-                      <span className="pill template-pill" title={week.description}>
-                        {week.templateTitle}
-                      </span>
-                      <span className={`pill ${isActive ? "pill-active" : "pill-archived"}`}>
-                        {isActive
-                          ? "Active week"
-                          : week.archivedAt
-                            ? `Archived · ${formatDateTime(week.archivedAt)}`
-                            : "Archived"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div
-                    aria-label={`Days logged for the week of ${formattedWeek}`}
-                    className="day-carousel"
-                  >
-                    <div className="day-track">
-                      {week.days.map((day) => {
-                        const { completed: dayCompleted, total: dayTotal } =
-                          countDaySets(day);
-
-                        return (
-                          <section className="day-card" key={day.id}>
-                            <div className="day-header">
-                              <h3>{day.name}</h3>
-                              <div className="day-meta">
-                                {day.shortName} • {dayCompleted}/{dayTotal} sets complete
-                              </div>
-                            </div>
-
-                            {day.exercises.map((exercise) => {
-                              const exerciseKey = `${day.id}-${exercise.name}`;
-                              const exerciseCompleted = exercise.sets.filter((set) => set.done).length;
-
-                              return (
-                                <div className="exercise-summary" key={exerciseKey}>
-                                  <div className="exercise-summary-title">
-                                    <span>{exercise.name}</span>
-                                    <span className="muted small">({exercise.target})</span>
-                                  </div>
-                                  <div className="exercise-summary-how">{exercise.how}</div>
-                                  <div className="exercise-table-wrap">
-                                    <table className="exercise-table">
-                                      <thead>
-                                        <tr>
-                                          <th scope="col">Set</th>
-                                          <th scope="col">Weight</th>
-                                          <th scope="col">
-                                            {exercise.type === "seconds" ? "Seconds" : "Reps"}
-                                          </th>
-                                          <th scope="col">RPE</th>
-                                          <th scope="col">Done</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {exercise.sets.map((set) => (
-                                          <tr key={`${exerciseKey}-${set.set}`}>
-                                            <td>{set.set}</td>
-                                            <td>{set.weight || "—"}</td>
-                                            <td>{set.repsOrSec || "—"}</td>
-                                            <td>{set.rpe || "—"}</td>
-                                            <td>{set.done ? "✅" : "—"}</td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                  <div className="exercise-summary-footer">
-                                    {exerciseCompleted}/{exercise.sets.length} sets complete
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </section>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+          <ArchiveViewer weeks={weeks} />
         )}
       </div>
     </div>

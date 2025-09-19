@@ -1045,6 +1045,156 @@ tr.done td {
   gap: clamp(14px, 2.4vw, 22px);
 }
 
+.archive-viewer {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(18px, 3.2vw, 32px);
+}
+
+.archive-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.archive-toolbar .archive-count {
+  margin: 0;
+}
+
+@media (min-width: 640px) {
+  .archive-toolbar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.archive-picker {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+}
+
+.archive-picker__button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: linear-gradient(140deg, rgba(9, 23, 34, 0.95), rgba(8, 18, 30, 0.88));
+  color: var(--text-strong);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.archive-picker__button:not(:disabled):hover {
+  box-shadow: 0 16px 32px rgba(12, 32, 48, 0.5);
+  transform: translateY(-1px);
+}
+
+.archive-picker__button:not(:disabled):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(24, 214, 198, 0.32), 0 16px 32px rgba(12, 32, 48, 0.5);
+}
+
+.archive-picker__button:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.archive-picker__text {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  gap: 2px;
+}
+
+.archive-picker__eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+}
+
+.archive-picker__value {
+  font-size: 15px;
+}
+
+.archive-picker__icon {
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+  transition: transform 0.2s ease;
+}
+
+.archive-picker__icon.open {
+  transform: rotate(180deg);
+}
+
+.archive-picker__menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: rgba(6, 16, 26, 0.98);
+  box-shadow: 0 18px 38px rgba(5, 12, 21, 0.65);
+  max-height: 320px;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.archive-picker__option {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.archive-picker__option:hover,
+.archive-picker__option:focus-visible {
+  outline: none;
+  background: rgba(24, 214, 198, 0.12);
+  color: var(--text-strong);
+}
+
+.archive-picker__option.selected {
+  background: rgba(24, 214, 198, 0.18);
+  color: var(--text-strong);
+  box-shadow: inset 0 0 0 1px rgba(24, 214, 198, 0.32);
+}
+
+.archive-picker__option-week {
+  font-weight: 600;
+}
+
+.archive-picker__option-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .archive-count {
   font-size: 13px;
   color: var(--muted);
@@ -1206,6 +1356,7 @@ tr.done td {
 .archive-page .day-track {
   display: flex;
   gap: 16px;
+  align-items: flex-start;
   overflow-x: auto;
   padding: 6px 2px 12px;
   scroll-snap-type: x mandatory;

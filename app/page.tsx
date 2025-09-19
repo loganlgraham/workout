@@ -543,11 +543,25 @@ export default function HomePage() {
     return (
       <div className="wrap">
         <header className="hero home-hero">
-          <div className="home-hero__header">
+          <div className="home-hero__mast">
             <div className="home-hero__brand">
               <p className="eyebrow">Fitmotion Trainer</p>
               <h1>Weekly Workouts</h1>
             </div>
+            <Link className="btn ghost home-hero__link" href="/workouts">
+              <span>View saved weeks</span>
+              <svg
+                aria-hidden="true"
+                focusable="false"
+                viewBox="0 0 20 20"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M5 10h8.17l-2.58-2.59L11 6l5 5-5 5-1.41-1.41L13.17 12H5z"
+                  fill="currentColor"
+                />
+              </svg>
+            </Link>
           </div>
           <p className="home-hero__description">We couldn’t load your workouts.</p>
         </header>
@@ -563,7 +577,7 @@ export default function HomePage() {
   return (
     <div className="wrap">
       <header className="hero home-hero">
-        <div className="home-hero__header">
+        <div className="home-hero__mast">
           <div className="home-hero__brand">
             <p className="eyebrow">Fitmotion Trainer</p>
             <h1>Weekly Workouts</h1>
@@ -587,7 +601,7 @@ export default function HomePage() {
           <label className="home-field home-hero__field" htmlFor="plan-level">
             <span>Level</span>
             <select
-              className="in"
+              className="in home-hero__select"
               id="plan-level"
               onChange={handlePlanSelect}
               value={String(selectedPlanIndex)}
@@ -600,12 +614,12 @@ export default function HomePage() {
               ))}
             </select>
           </label>
-          <div className="home-hero__meta">
-            <span className="home-pill">{currentPlanOption.label} plan</span>
-            <span className="home-pill">{week.templateTitle}</span>
+          <div className="home-hero__plan-summary">
+            <p className="home-hero__plan-label">{currentPlanOption.label} plan</p>
+            <p className="home-hero__plan-title">{week.templateTitle}</p>
+            <p className="home-hero__description">{week.description}</p>
           </div>
         </div>
-        <p className="home-hero__description">{week.description}</p>
       </header>
 
       {error && (

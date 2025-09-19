@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { getDb } from "@/lib/mongodb";
@@ -82,25 +81,12 @@ export default async function WorkoutsPage() {
     <div className="archive-page">
       <div className="wrap archive-wrap">
         <header className="hero hero-compact archive-hero">
-          <div className="hero-heading">
-            <div className="brand-lockup">
-              <div className="brand-logo-wrap brand-logo-highlight">
-                <Image
-                  alt="Fitmotion"
-                  className="brand-logo"
-                  height={96}
-                  priority
-                  sizes="(max-width: 640px) 120px, 160px"
-                  src="/fitmotion-logo.svg"
-                  style={{ width: "100%", height: "auto" }}
-                  width={160}
-                />
-              </div>
-              <div className="brand-text">
-                <p className="eyebrow">Fitmotion Archive</p>
-                <h1>Saved Workouts</h1>
-              </div>
-            </div>
+          <div className="hero-heading archive-hero__heading">
+            <p className="eyebrow">Fitmotion Archive</p>
+            <h1>Saved Workouts</h1>
+            <p className="hero-sub">
+              Browse the weeks you’ve logged, keep tabs on progress, and share highlights anytime.
+            </p>
           </div>
           <div className="hero-actions">
             <Link className="btn ghost" href="/">

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 
@@ -546,20 +545,8 @@ export default function HomePage() {
         <header className="hero home-hero">
           <div className="home-hero__header">
             <div className="home-hero__brand">
-              <span className="home-hero__logo">
-                <Image
-                  alt="Fitmotion"
-                  height={64}
-                  sizes="72px"
-                  src="/fitmotion-logo.svg"
-                  style={{ width: "100%", height: "auto" }}
-                  width={64}
-                />
-              </span>
-              <div>
-                <p className="eyebrow">Fitmotion Trainer</p>
-                <h1>Weekly Workouts</h1>
-              </div>
+              <p className="eyebrow">Fitmotion Trainer</p>
+              <h1>Weekly Workouts</h1>
             </div>
           </div>
           <p className="home-hero__description">We couldn’t load your workouts.</p>
@@ -578,21 +565,8 @@ export default function HomePage() {
       <header className="hero home-hero">
         <div className="home-hero__header">
           <div className="home-hero__brand">
-            <span className="home-hero__logo">
-              <Image
-                alt="Fitmotion"
-                height={64}
-                priority
-                sizes="72px"
-                src="/fitmotion-logo.svg"
-                style={{ width: "100%", height: "auto" }}
-                width={64}
-              />
-            </span>
-            <div>
-              <p className="eyebrow">Fitmotion Trainer</p>
-              <h1>Weekly Workouts</h1>
-            </div>
+            <p className="eyebrow">Fitmotion Trainer</p>
+            <h1>Weekly Workouts</h1>
           </div>
           <Link className="btn ghost home-hero__link" href="/workouts">
             View saved weeks

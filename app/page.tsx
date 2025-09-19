@@ -663,11 +663,11 @@ export default function HomePage() {
               Today’s Plan
             </h2>
             <div className="tab-scroll">
-              <div className="tab-group">
-                {week.days.map((day, idx) => (
-                  <button
-                    key={day.id}
-                    className={classNames("pill", idx === activeDayIndex && "active")}
+            <div className="tab-group">
+              {week.days.map((day, idx) => (
+                <button
+                  key={day.id}
+                  className={classNames("pill", idx === activeDayIndex && "active")}
                     onClick={() => setActiveDayIndex(idx)}
                     title={day.name}
                     type="button"
@@ -683,6 +683,7 @@ export default function HomePage() {
             <span className={getStatusClass(saveState)}>{formatStatus(saveState)}</span>
             <div className="topbar__actions">
               <button
+                aria-label="Share week summary"
                 className="btn"
                 onClick={() => {
                   void handleShare();
@@ -691,7 +692,7 @@ export default function HomePage() {
                 title="Share a summary of your progress"
               >
                 <span aria-hidden>📤</span>
-                <span className="btn-label">Share</span>
+                <span className="sr-only">Share</span>
               </button>
               <button
                 className="btn warn"
@@ -722,25 +723,28 @@ export default function HomePage() {
             <p>No day selected.</p>
           ) : (
             <div>
-              {activeDay.exercises.map((exercise, exerciseIndex) => (
-                <div className="exercise" key={`${exercise.name}-${exerciseIndex}`}>
-                  <header>
-                    <h3>
-                      {exercise.name}{" "}
-                      <span className="muted small">({exercise.target})</span>
-                    </h3>
-                  </header>
-                  <details className="how">
-                    <summary>Form cues</summary>
-                    <p>{exercise.how}</p>
-                  </details>
-                  <div className="sets">
-                    <table>
+              {activeDay.exercises.map((exercise, exerciseIndex) => {
+                const metricLabel = exercise.type === "seconds" ? "Seconds" : "Reps";
+
+                return (
+                  <div className="exercise" key={`${exercise.name}-${exerciseIndex}`}>
+                    <header>
+                      <h3>
+                        {exercise.name}{" "}
+                        <span className="muted small">({exercise.target})</span>
+                      </h3>
+                    </header>
+                    <details className="how">
+                      <summary>Form cues</summary>
+                      <p>{exercise.how}</p>
+                    </details>
+                    <div className="sets">
+                      <table className="tracker-table">
                       <thead>
                         <tr>
                           <th>Set</th>
                           <th>Weight</th>
-                          <th>{exercise.type === "seconds" ? "Seconds" : "Reps"}</th>
+                          <th>{metricLabel}</th>
                           <th>RPE</th>
                           <th>Done</th>
                         </tr>
@@ -748,8 +752,8 @@ export default function HomePage() {
                       <tbody>
                         {exercise.sets.map((set, setIndex) => (
                           <tr key={`${exercise.name}-${setIndex}`} className={set.done ? "done" : undefined}>
-                            <td>{set.set}</td>
-                            <td>
+                            <td data-label="Set">{set.set}</td>
+                            <td data-label="Weight">
                               <input
                                 className="in"
                                 type="text"
@@ -761,7 +765,7 @@ export default function HomePage() {
                                 }
                               />
                             </td>
-                            <td>
+                            <td data-label={metricLabel}>
                               <input
                                 className="in"
                                 type="text"
@@ -773,7 +777,7 @@ export default function HomePage() {
                                 }
                               />
                             </td>
-                            <td>
+                            <td data-label="RPE">
                               <select
                                 className="in"
                                 value={set.rpe}
@@ -788,7 +792,7 @@ export default function HomePage() {
                                 <option value="8">8</option>
                               </select>
                             </td>
-                            <td>
+                            <td data-label="Done">
                               <input
                                 className="chk"
                                 type="checkbox"
@@ -801,10 +805,11 @@ export default function HomePage() {
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                      </table>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

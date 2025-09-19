@@ -53,7 +53,6 @@ async function fetchWeeks(): Promise<WeekListEntry[]> {
   const collection = db.collection<WeekDocument>("weeks");
   const documents = await collection
     .find({}, { sort: { createdAt: -1 } })
-    .limit(24)
     .toArray();
 
   return documents.map((doc) => {
@@ -94,6 +93,12 @@ export default async function WorkoutsPage() {
             </Link>
           </div>
         </header>
+
+        {!loadError && weeks.length > 0 && (
+          <p className="archive-count" role="status">
+            Showing all {weeks.length} saved week{weeks.length === 1 ? "" : "s"}.
+          </p>
+        )}
 
         {loadError ? (
           <div className="banner error">

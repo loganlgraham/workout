@@ -1,32 +1,36 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 120" role="img" aria-labelledby="fitmotion-title">
-  <title id="fitmotion-title">Fitmotion logo</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-labelledby="fitmotion-logo-title">
+  <title id="fitmotion-logo-title">Fitmotion logo</title>
   <defs>
-    <linearGradient id="fitmotion-glow" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#25f4d2" />
-      <stop offset="100%" stop-color="#0b8bd0" />
+    <linearGradient id="fitmotion-ring" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#23f7d6" />
+      <stop offset="48%" stop-color="#21d1cf" />
+      <stop offset="100%" stop-color="#0b7dd0" />
     </linearGradient>
+    <linearGradient id="fitmotion-core" x1="22%" y1="14%" x2="88%" y2="88%">
+      <stop offset="0%" stop-color="#102235" />
+      <stop offset="100%" stop-color="#071220" />
+    </linearGradient>
+    <linearGradient id="fitmotion-swoosh" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#23f7d6" />
+      <stop offset="100%" stop-color="#12b5ff" />
+    </linearGradient>
+    <filter id="fitmotion-glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="18" result="blur" />
+      <feColorMatrix in="blur" type="matrix"
+        values="0 0 0 0 0.11  0 0 0 0 0.82  0 0 0 0 0.76  0 0 0 0.4 0" />
+    </filter>
   </defs>
-  <g transform="translate(24 12)">
-    <circle cx="56" cy="48" r="44" fill="#0b1016" />
-    <path
-      fill="url(#fitmotion-glow)"
-      d="M94 48.5c-4.8-18.5-21-30-36.8-30C39.5 18.5 26 31.7 26 48.6 26 66.8 40.6 81 58.8 81c11.6 0 21.8-6.6 27-16.7-4.9 3.5-11 5.6-17.6 5.6-18 0-32.5-14.7-32.5-32.7 0-5.4 1.2-10.4 3.5-15-0.3 17.5 13.3 31.6 30.9 31.6 9.2 0 17.3-4 23.1-10.3z"
-    />
-    <path
-      fill="#051c22"
-      opacity="0.85"
-      d="M71.7 48.2c-4-7.2-12.2-11.1-20.5-9-7.8 2-13.5 9.2-13.5 17.4 0 10.2 8.2 18.6 18.5 18.6 9.3 0 17-7 18.2-16.2-3.5 3.1-8.1 4.8-12.9 4.8-10.8 0-19.6-8.6-19.6-19.3 0-2.5 0.5-4.9 1.3-7.1 7.3-4.5 17.4-3.5 24.5 3.6z"
-    />
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="160" cy="160" r="148" stroke="url(#fitmotion-ring)" stroke-width="16" opacity="0.18"
+      filter="url(#fitmotion-glow)" />
+    <circle cx="160" cy="160" r="126" fill="url(#fitmotion-core)" stroke="#0b1724" stroke-width="2" />
+    <path d="M96 192c24 46 100 70 144 18" stroke="url(#fitmotion-swoosh)" stroke-width="22" opacity="0.4" />
+    <path d="M98 126c24-36 76-60 128-36" stroke="#0fe6d4" stroke-width="18" opacity="0.25" />
   </g>
-  <text
-    x="128"
-    y="82"
-    fill="#0b1016"
-    font-family="'Inter', 'Poppins', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
-    font-size="52"
-    font-weight="700"
-    letter-spacing="0.5"
-  >
-    fitmoti<tspan fill="#12d2c7">o</tspan>n
-  </text>
+  <g fill="url(#fitmotion-swoosh)">
+    <path d="M186 86h-64a14 14 0 0 0 0 28h44c16.2 0 26 8.2 26 21.2S182.2 156 166 156h-46a14 14 0 0 0 0 28h41.4c12.2 0 18.6 6.2 18.6 15.4 0 9.9-7.8 16.6-19.6 16.6h-42.4a14 14 0 0 0 0 28h48.8c30.2 0 54-18.8 54-47 0-21.6-12.4-36.6-32.4-41.5 15.4-6.7 24.6-19.8 24.6-36.9C213 101 202 86 186 86Z" />
+  </g>
+  <g fill="#12b5ff" opacity="0.75">
+    <path d="M232 112c-4.4-12.4-13.5-21.4-25.4-26a4 4 0 0 0-4.2 6.8c8.8 6.6 13.8 16 13.8 27.2 0 12-5.8 21.4-16 26.8a4 4 0 0 0 1.2 7.4c16 4.2 26.6 17.1 26.6 34 0 12.5-5.6 23-15.9 30.2a4 4 0 0 0 4.6 6.5C235 215.4 246 197 246 173c0-24.8-10-46.2-28-61Z" />
+  </g>
 </svg>

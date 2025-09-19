@@ -80,17 +80,19 @@ export default async function WorkoutsPage() {
 
   return (
     <div className="wrap">
-      <header className="hero hero-compact">
+      <header className="hero hero-compact archive-hero">
         <div className="hero-heading">
           <div className="brand-lockup">
-            <div className="brand-logo-wrap">
+            <div className="brand-logo-wrap brand-logo-highlight">
               <Image
                 alt="Fitmotion"
                 className="brand-logo"
-                height={48}
-                sizes="56px"
+                height={120}
+                priority
+                sizes="(max-width: 640px) 200px, 260px"
                 src="/fitmotion-logo.svg"
-                width={48}
+                style={{ width: "100%", height: "auto" }}
+                width={360}
               />
             </div>
             <div className="brand-text">
@@ -129,15 +131,30 @@ export default async function WorkoutsPage() {
                 <div className="workout-header">
                   <div>
                     <h2>Week of {formatWeekOf(week.weekOf)}</h2>
-                    <div className="workout-meta">
-                      <span>
-                        {week.days.length} day{week.days.length === 1 ? "" : "s"}
-                      </span>
-                      <span>
-                        {completed}/{total} sets complete
-                      </span>
-                      <span>Updated {formatDateTime(week.updatedAt)}</span>
-                    </div>
+                    <ul className="workout-summary-grid">
+                      <li className="summary-item">
+                        <span className="summary-label">Days logged</span>
+                        <span className="summary-value-row">
+                          <span className="summary-value">{week.days.length}</span>
+                          <span className="summary-subvalue">
+                            day{week.days.length === 1 ? "" : "s"}
+                          </span>
+                        </span>
+                      </li>
+                      <li className="summary-item">
+                        <span className="summary-label">Sets complete</span>
+                        <span className="summary-value-row">
+                          <span className="summary-value">{completed}</span>
+                          <span className="summary-subvalue">of {total}</span>
+                        </span>
+                      </li>
+                      <li className="summary-item">
+                        <span className="summary-label">Last updated</span>
+                        <span className="summary-value summary-value-compact">
+                          {formatDateTime(week.updatedAt)}
+                        </span>
+                      </li>
+                    </ul>
                   </div>
                   <div className="workout-tags">
                     <span className="pill template-pill" title={week.description}>
@@ -177,28 +194,32 @@ export default async function WorkoutsPage() {
                                 <span className="muted small">({exercise.target})</span>
                               </div>
                               <div className="exercise-summary-how">{exercise.how}</div>
-                              <table className="exercise-table">
-                                <thead>
-                                  <tr>
-                                    <th>Set</th>
-                                    <th>Weight</th>
-                                    <th>{exercise.type === "seconds" ? "Seconds" : "Reps"}</th>
-                                    <th>RPE</th>
-                                    <th>Done</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {exercise.sets.map((set) => (
-                                    <tr key={`${exerciseKey}-${set.set}`}>
-                                      <td>{set.set}</td>
-                                      <td>{set.weight || "—"}</td>
-                                      <td>{set.repsOrSec || "—"}</td>
-                                      <td>{set.rpe || "—"}</td>
-                                      <td>{set.done ? "✅" : "—"}</td>
+                              <div className="exercise-table-wrap">
+                                <table className="exercise-table">
+                                  <thead>
+                                    <tr>
+                                      <th scope="col">Set</th>
+                                      <th scope="col">Weight</th>
+                                      <th scope="col">
+                                        {exercise.type === "seconds" ? "Seconds" : "Reps"}
+                                      </th>
+                                      <th scope="col">RPE</th>
+                                      <th scope="col">Done</th>
                                     </tr>
-                                  ))}
-                                </tbody>
-                              </table>
+                                  </thead>
+                                  <tbody>
+                                    {exercise.sets.map((set) => (
+                                      <tr key={`${exerciseKey}-${set.set}`}>
+                                        <td>{set.set}</td>
+                                        <td>{set.weight || "—"}</td>
+                                        <td>{set.repsOrSec || "—"}</td>
+                                        <td>{set.rpe || "—"}</td>
+                                        <td>{set.done ? "✅" : "—"}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
                               <div className="exercise-summary-footer">
                                 {exerciseCompleted}/{exercise.sets.length} sets complete
                               </div>

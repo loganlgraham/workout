@@ -475,10 +475,11 @@ export default function HomePage() {
                 <Image
                   alt="Fitmotion"
                   className="brand-logo"
-                  height={56}
-                  sizes="64px"
+                  height={120}
+                  sizes="(max-width: 640px) 200px, 260px"
                   src="/fitmotion-logo.svg"
-                  width={56}
+                  style={{ width: "100%", height: "auto" }}
+                  width={360}
                 />
               </div>
               <div className="brand-text">
@@ -507,11 +508,12 @@ export default function HomePage() {
               <Image
                 alt="Fitmotion"
                 className="brand-logo"
-                height={56}
+                height={120}
                 priority
-                sizes="64px"
+                sizes="(max-width: 640px) 200px, 260px"
                 src="/fitmotion-logo.svg"
-                width={56}
+                style={{ width: "100%", height: "auto" }}
+                width={360}
               />
             </div>
             <div className="brand-text">

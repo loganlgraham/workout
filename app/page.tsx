@@ -658,56 +658,66 @@ export default function HomePage() {
 
       <div className="sticky-actions">
         <div className="topbar">
-          <div className="tab-group">
-            {week.days.map((day, idx) => (
-              <button
-                key={day.id}
-                className={classNames("pill", idx === activeDayIndex && "active")}
-                onClick={() => setActiveDayIndex(idx)}
-                title={day.name}
-                type="button"
-              >
-                {day.shortName}
-              </button>
-            ))}
-            <span className="pill">Week of {week.weekOf}</span>
+          <div className="topbar__primary">
+            <h2 className="topbar__title">
+              Today’s Plan
+            </h2>
+            <div className="tab-scroll">
+              <div className="tab-group">
+                {week.days.map((day, idx) => (
+                  <button
+                    key={day.id}
+                    className={classNames("pill", idx === activeDayIndex && "active")}
+                    onClick={() => setActiveDayIndex(idx)}
+                    title={day.name}
+                    type="button"
+                  >
+                    {day.shortName}
+                  </button>
+                ))}
+                <span className="pill">Week of {week.weekOf}</span>
+              </div>
+            </div>
           </div>
-          <span className="spacer" />
-          <span className={getStatusClass(saveState)}>{formatStatus(saveState)}</span>
-          <button
-            className="btn"
-            onClick={() => {
-              void handleShare();
-            }}
-            type="button"
-            title="Share a summary of your progress"
-          >
-            <span aria-hidden>📤</span>
-            <span className="btn-label">Share</span>
-          </button>
-          <button
-            className="btn warn"
-            onClick={handleNewWeek}
-            type="button"
-            title="Archive current data and start fresh"
-            disabled={newWeekLoading}
-          >
-            {newWeekLoading ? "⏳ Loading…" : "🗓️ New Week"}
-          </button>
-          <button
-            className="btn danger"
-            onClick={handleResetDay}
-            type="button"
-            title="Clear the current day only"
-          >
-            ♻️ Reset Day
-          </button>
+          <div className="topbar__secondary">
+            <span className={getStatusClass(saveState)}>{formatStatus(saveState)}</span>
+            <div className="topbar__actions">
+              <button
+                className="btn"
+                onClick={() => {
+                  void handleShare();
+                }}
+                type="button"
+                title="Share a summary of your progress"
+              >
+                <span aria-hidden>📤</span>
+                <span className="btn-label">Share</span>
+              </button>
+              <button
+                className="btn warn"
+                onClick={handleNewWeek}
+                type="button"
+                title="Archive current data and start fresh"
+                disabled={newWeekLoading}
+              >
+                {newWeekLoading ? "⏳ Loading…" : "🗓️ New Week"}
+              </button>
+              <button
+                className="btn danger"
+                onClick={handleResetDay}
+                type="button"
+                title="Clear the current day only"
+              >
+                ♻️ Reset Day
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="grid">
         <div className="card">
-          <h2>Today’s Plan</h2>
+          <h2 className="card-title card-title--desktop">Today’s Plan</h2>
           {!activeDay ? (
             <p>No day selected.</p>
           ) : (

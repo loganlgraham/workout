@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="fitmotion-mark-title">
+  <title id="fitmotion-mark-title">Fitmotion mark</title>
+  <defs>
+    <clipPath id="fitmotion-circle">
+      <circle cx="128" cy="128" r="108" />
+    </clipPath>
+    <mask id="fitmotion-swipe">
+      <rect width="256" height="256" fill="#fff" />
+      <circle cx="110" cy="150" r="88" fill="#000" />
+    </mask>
+  </defs>
+  <circle cx="128" cy="128" r="108" fill="#0f1115" />
+  <g clip-path="url(#fitmotion-circle)">
+    <circle cx="158" cy="92" r="96" fill="#10b7b0" mask="url(#fitmotion-swipe)" />
+  </g>
+</svg>

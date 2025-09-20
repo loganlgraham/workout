@@ -15,6 +15,7 @@ export type ExerciseEntry = {
   target: string;
   how: string;
   type: "reps" | "seconds";
+  suggestedWeight?: string;
   sets: SetEntry[];
 };
 
@@ -50,19 +51,123 @@ export type WeekResponse = {
   days: DayEntry[];
 };
 
-export function getMonday(date = new Date()): string {
+export function getWeekStart(date = new Date()): string {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const day = d.getUTCDay();
-  const diff = (day === 0 ? -6 : 1) - day;
-  d.setUTCDate(d.getUTCDate() + diff);
+  d.setUTCDate(d.getUTCDate() - day);
   d.setUTCHours(0, 0, 0, 0);
   return d.toISOString().substring(0, 10);
 }
 
-function buildSets(count: number): SetEntry[] {
+export function getNextWeekStart(weekOf: string): string {
+  const base = new Date(`${weekOf}T00:00:00.000Z`);
+
+  if (Number.isNaN(base.getTime())) {
+    return getWeekStart();
+  }
+
+  const normalized = new Date(`${getWeekStart(base)}T00:00:00.000Z`);
+  normalized.setUTCDate(normalized.getUTCDate() + 7);
+  return normalized.toISOString().substring(0, 10);
+}
+
+type WeekLike = {
+  weekOf: string;
+  updatedAt: string;
+  createdAt?: string;
+  status?: "active" | "archived";
+};
+
+function parseDate(value: string | undefined): number {
+  if (!value) return Number.NaN;
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? Number.NaN : timestamp;
+}
+
+export function dedupeWeeksByStart<T extends WeekLike>(weeks: T[]): T[] {
+  const groups = new Map<string, T[]>();
+
+  for (const week of weeks) {
+    const existing = groups.get(week.weekOf);
+    if (existing) {
+      existing.push(week);
+    } else {
+      groups.set(week.weekOf, [week]);
+    }
+  }
+
+  const deduped: T[] = [];
+
+  for (const entries of Array.from(groups.values())) {
+    const winner = entries.reduce<T | null>((best, candidate) => {
+      if (!best) {
+        return candidate;
+      }
+
+      const bestStatus = best.status;
+      const candidateStatus = candidate.status;
+
+      if (bestStatus !== "archived" && candidateStatus === "archived") {
+        return candidate;
+      }
+
+      if (bestStatus === "archived" && candidateStatus !== "archived") {
+        return best;
+      }
+
+      const bestUpdated = parseDate(best.updatedAt);
+      const candidateUpdated = parseDate(candidate.updatedAt);
+
+      if (!Number.isNaN(candidateUpdated) && !Number.isNaN(bestUpdated)) {
+        if (candidateUpdated > bestUpdated) {
+          return candidate;
+        }
+        if (candidateUpdated < bestUpdated) {
+          return best;
+        }
+      }
+
+      const bestCreated = parseDate(best.createdAt);
+      const candidateCreated = parseDate(candidate.createdAt);
+
+      if (!Number.isNaN(candidateCreated) && !Number.isNaN(bestCreated)) {
+        if (candidateCreated > bestCreated) {
+          return candidate;
+        }
+        if (candidateCreated < bestCreated) {
+          return best;
+        }
+      }
+
+      return candidate;
+    }, null);
+
+    if (winner) {
+      deduped.push(winner);
+    }
+  }
+
+  deduped.sort((a, b) => {
+    const updatedDiff = parseDate(b.updatedAt) - parseDate(a.updatedAt);
+    if (!Number.isNaN(updatedDiff) && updatedDiff !== 0) {
+      return updatedDiff;
+    }
+
+    const createdDiff = parseDate(b.createdAt ?? b.updatedAt) - parseDate(a.createdAt ?? a.updatedAt);
+    if (!Number.isNaN(createdDiff) && createdDiff !== 0) {
+      return createdDiff;
+    }
+
+    return b.weekOf.localeCompare(a.weekOf);
+  });
+
+  return deduped;
+}
+
+function buildSets(count: number, suggestedWeight?: string): SetEntry[] {
   return Array.from({ length: count }).map((_, index) => ({
     set: index + 1,
-    weight: "",
+    weight: suggestedWeight ?? "",
     repsOrSec: "",
     rpe: "",
     done: false
@@ -71,7 +176,7 @@ function buildSets(count: number): SetEntry[] {
 
 export function createWeekDocument(templateIndex: number, weekOf?: string): WeekDocument {
   const template: WeekTemplate = getTemplate(templateIndex);
-  const resolvedWeekOf = weekOf ?? getMonday();
+  const resolvedWeekOf = weekOf ?? getWeekStart();
   const now = new Date();
 
   const days: DayEntry[] = template.days.map((day) => ({
@@ -83,7 +188,8 @@ export function createWeekDocument(templateIndex: number, weekOf?: string): Week
       target: exercise.target,
       how: exercise.how,
       type: exercise.type,
-      sets: buildSets(exercise.sets)
+      suggestedWeight: exercise.suggestedWeight,
+      sets: buildSets(exercise.sets, exercise.suggestedWeight)
     }))
   }));
 
@@ -101,6 +207,34 @@ export function createWeekDocument(templateIndex: number, weekOf?: string): Week
 }
 
 export function serializeWeek(doc: WithId<WeekDocument>): WeekResponse {
+  const template = getTemplate(doc.templateIndex);
+
+  function resolveTemplateDay(dayId: string, dayName: string) {
+    const prefix = `${doc.templateKey}-`;
+    const bareId = dayId.startsWith(prefix) ? dayId.slice(prefix.length) : dayId;
+    return (
+      template.days.find((candidate) => candidate.id === bareId) ||
+      template.days.find((candidate) => candidate.name === dayName)
+    );
+  }
+
+  function selectSuggestedWeight(
+    dayId: string,
+    dayName: string,
+    exercise: WeekDocument["days"][number]["exercises"][number]
+  ) {
+    if (exercise.suggestedWeight && exercise.suggestedWeight.trim().length > 0) {
+      return exercise.suggestedWeight.trim();
+    }
+
+    const templateDay = resolveTemplateDay(dayId, dayName);
+    const templateExercise = templateDay?.exercises.find(
+      (candidate) => candidate.name === exercise.name
+    );
+
+    return templateExercise?.suggestedWeight?.trim() ?? "";
+  }
+
   return {
     id: doc._id.toString(),
     weekOf: doc.weekOf,
@@ -114,19 +248,33 @@ export function serializeWeek(doc: WithId<WeekDocument>): WeekResponse {
       id: day.id,
       shortName: day.shortName,
       name: day.name,
-      exercises: day.exercises.map((exercise) => ({
-        name: exercise.name,
-        target: exercise.target,
-        how: exercise.how,
-        type: exercise.type,
-        sets: exercise.sets.map((set) => ({
-          set: set.set,
-          weight: set.weight,
-          repsOrSec: set.repsOrSec,
-          rpe: set.rpe,
-          done: set.done
-        }))
-      }))
+      exercises: day.exercises.map((exercise) => {
+        const suggestedWeight = selectSuggestedWeight(day.id, day.name, exercise);
+        const normalizedSuggestion = suggestedWeight.trim();
+        const resolvedSuggestion = normalizedSuggestion.length > 0 ? normalizedSuggestion : undefined;
+
+        return {
+          name: exercise.name,
+          target: exercise.target,
+          how: exercise.how,
+          type: exercise.type,
+          suggestedWeight: resolvedSuggestion,
+          sets: exercise.sets.map((set) => {
+            const hasWeight = typeof set.weight === "string" && set.weight.trim().length > 0;
+            const resolvedWeight = hasWeight
+              ? set.weight
+              : resolvedSuggestion ?? "";
+
+            return {
+              set: set.set,
+              weight: resolvedWeight,
+              repsOrSec: set.repsOrSec,
+              rpe: set.rpe,
+              done: Boolean(set.done)
+            };
+          })
+        };
+      })
     }))
   };
 }

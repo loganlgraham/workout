@@ -1,14 +1,38 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import type { DayEntry, WeekResponse } from "@/lib/week";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 const ACTIVE_DAY_STORAGE_KEY = "rpe6_active_day";
+const USER_STORAGE_KEY = "fitmotion_user";
 
 type FieldKey = "weight" | "repsOrSec" | "rpe" | "done";
+
+type PlanOption = {
+  value: number;
+  key: string;
+  label: string;
+};
+
+type StoredUser = {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAt?: string | null;
+};
+
+const PLAN_OPTIONS: PlanOption[] = [
+  { value: 0, key: "foundation", label: "Beginner" },
+  { value: 1, key: "athletic", label: "Intermediate" },
+  { value: 2, key: "apex", label: "Advanced" }
+];
 
 type ConfirmState = {
   message: string;
@@ -46,55 +70,110 @@ function getStatusClass(state: SaveState) {
   }
 }
 
-function exportWeekToCsv(week: WeekResponse) {
-  const rows: string[][] = [[
-    "weekOf",
-    "templateTitle",
-    "day",
-    "exercise",
-    "set",
-    "weight",
-    "repsOrSec",
-    "rpe",
-    "done",
-    "exportedAt"
-  ]];
-  const now = new Date().toISOString();
+function getDayTotals(day: DayEntry) {
+  return day.exercises.reduce(
+    (acc, exercise) => {
+      const doneSets = exercise.sets.filter((set) => set.done).length;
+      acc.completed += doneSets;
+      acc.total += exercise.sets.length;
+      return acc;
+    },
+    { completed: 0, total: 0 }
+  );
+}
+
+function collectUnique(values: string[]) {
+  const trimmed = values
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  return Array.from(new Set(trimmed));
+}
+
+function buildWeekShareSummary(week: WeekResponse) {
+  let aggregateCompleted = 0;
+  let aggregateTotal = 0;
 
   week.days.forEach((day) => {
-    day.exercises.forEach((exercise) => {
-      exercise.sets.forEach((set) => {
-        rows.push([
-          week.weekOf,
-          week.templateTitle,
-          day.name,
-          exercise.name,
-          String(set.set),
-          set.weight,
-          set.repsOrSec,
-          set.rpe,
-          set.done ? "1" : "0",
-          now
-        ]);
-      });
-    });
+    const { completed, total } = getDayTotals(day);
+    aggregateCompleted += completed;
+    aggregateTotal += total;
   });
 
-  const csv = rows
-    .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","))
-    .join("\n");
+  const lines: string[] = [
+    `Fitmotion · Week of ${week.weekOf}`,
+    `${week.templateTitle} — ${week.description}`,
+    `Progress: ${aggregateCompleted}/${aggregateTotal} sets complete`,
+    ""
+  ];
 
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `rpe6-checklist-${week.weekOf}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
+  week.days.forEach((day) => {
+    const { completed, total } = getDayTotals(day);
+    lines.push(`${day.name}: ${completed}/${total} sets complete`);
+
+    day.exercises.forEach((exercise) => {
+      const doneSets = exercise.sets.filter((set) => set.done).length;
+      const weights = collectUnique(exercise.sets.map((set) => set.weight));
+      const repsOrSeconds = collectUnique(exercise.sets.map((set) => set.repsOrSec));
+      const rpes = collectUnique(exercise.sets.map((set) => set.rpe));
+      const detailParts: string[] = [];
+
+      if (weights.length > 0) {
+        detailParts.push(`wt ${weights.join("/")}`);
+      }
+      if (repsOrSeconds.length > 0) {
+        detailParts.push(`${exercise.type === "seconds" ? "sec" : "reps"} ${repsOrSeconds.join("/")}`);
+      }
+      if (rpes.length > 0) {
+        detailParts.push(`RPE ${rpes.join("/")}`);
+      }
+      detailParts.push(`${doneSets}/${exercise.sets.length} done`);
+
+      lines.push(`  • ${exercise.name}: ${detailParts.join(" · ")}`);
+    });
+
+    lines.push("");
+  });
+
+  lines.push("Shared from Fitmotion Trainer");
+
+  return lines.join("\n").trim();
+}
+
+async function copyToClipboard(text: string) {
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (error) {
+      console.error("Clipboard API failed", error);
+    }
+  }
+
+  if (typeof document !== "undefined") {
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.top = "-9999px";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      return true;
+    } catch (error) {
+      console.error("execCommand copy failed", error);
+    }
+  }
+
+  return false;
 }
 
 export default function HomePage() {
   const [week, setWeek] = useState<WeekResponse | null>(null);
+  const [selectedPlanIndex, setSelectedPlanIndex] = useState(0);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -102,6 +181,7 @@ export default function HomePage() {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [newWeekLoading, setNewWeekLoading] = useState(false);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
+  const [currentUser, setCurrentUser] = useState<StoredUser | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRef = useRef(false);
   const initialLoadRef = useRef(true);
@@ -121,6 +201,7 @@ export default function HomePage() {
         pendingRef.current = false;
         initialLoadRef.current = true;
         setWeek(data.week);
+        setSelectedPlanIndex(data.week.templateIndex);
         setSaveState("saved");
         setError(null);
         setNotice(null);
@@ -143,6 +224,46 @@ export default function HomePage() {
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    function readUser(raw: string | null) {
+      if (!raw) {
+        setCurrentUser(null);
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(raw) as StoredUser;
+        setCurrentUser(parsed);
+      } catch (storageError) {
+        console.error("Failed to parse stored user", storageError);
+        setCurrentUser(null);
+      }
+    }
+
+    readUser(window.localStorage.getItem(USER_STORAGE_KEY));
+
+    function handleStorage(event: StorageEvent) {
+      if (event.key === USER_STORAGE_KEY) {
+        readUser(event.newValue);
+      }
+    }
+
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (week) {
+      setSelectedPlanIndex(week.templateIndex);
+    }
+  }, [week]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -221,6 +342,101 @@ export default function HomePage() {
     return week.days[activeDayIndex] ?? week.days[0];
   }, [week, activeDayIndex]);
 
+  const currentPlanOption = useMemo(() => {
+    const planIndex = week?.templateIndex ?? 0;
+    return PLAN_OPTIONS.find((option) => option.value === planIndex) ?? PLAN_OPTIONS[0];
+  }, [week?.templateIndex]);
+
+  const greetingName = useMemo(() => {
+    if (!currentUser?.name) {
+      return null;
+    }
+    const trimmed = currentUser.name.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const [first] = trimmed.split(/\s+/);
+    return first ?? trimmed;
+  }, [currentUser?.name]);
+
+  const heroBrand = (
+    <div className="home-hero__brand">
+      <div className="home-hero__logo">
+        <Image
+          alt="Fitmotion logo"
+          className="home-hero__logo-image"
+          height={88}
+          priority
+          src="/fitmotion-logo.svg"
+          width={88}
+        />
+      </div>
+      <div className="home-hero__title">
+        <p className="eyebrow">Fitmotion Trainer</p>
+        <h1>Weekly Workouts</h1>
+        {greetingName && (
+          <p className="home-hero__welcome">Welcome back, {greetingName}!</p>
+        )}
+      </div>
+    </div>
+  );
+
+  const heroActions = (
+    <div className="home-hero__actions">
+      <Link className="btn ghost home-hero__link" href="/workouts">
+        <span>View saved weeks</span>
+        <svg
+          aria-hidden="true"
+          focusable="false"
+          viewBox="0 0 20 20"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M5 10h8.17l-2.58-2.59L11 6l5 5-5 5-1.41-1.41L13.17 12H5z"
+            fill="currentColor"
+          />
+        </svg>
+      </Link>
+      <Link className="btn ghost home-hero__link" href="/progress">
+        <span>Progress insights</span>
+        <svg
+          aria-hidden="true"
+          focusable="false"
+          viewBox="0 0 20 20"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M3.5 13.5 7.75 9.25 11 12.5 16.5 7"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+          <path
+            d="M16.5 11V7h-4"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </svg>
+      </Link>
+      <Link className="btn ghost home-hero__link" href="/auth">
+        <span>Log in / Register</span>
+        <svg
+          aria-hidden="true"
+          focusable="false"
+          viewBox="0 0 20 20"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path d="M5 10h8.17l-2.58-2.59L11 6l5 5-5 5-1.41-1.41L13.17 12H5z" fill="currentColor" />
+        </svg>
+      </Link>
+    </div>
+  );
+
   function markPending() {
     pendingRef.current = true;
     setSaveState("saving");
@@ -238,6 +454,9 @@ export default function HomePage() {
 
   function cancelConfirm() {
     setConfirmState(null);
+    if (week) {
+      setSelectedPlanIndex(week.templateIndex);
+    }
   }
 
   function updateSet(
@@ -312,16 +531,29 @@ export default function HomePage() {
     });
   }
 
-  async function startNewWeek(currentWeek: WeekResponse) {
+  async function startNewWeek(currentWeek: WeekResponse, templateIndex?: number, successMessage?: string) {
     try {
       setNewWeekLoading(true);
       setNotice(null);
       setSaveState("saving");
       setError(null);
+      const payload: {
+        id: string;
+        days: WeekResponse["days"];
+        templateIndex?: number;
+      } = {
+        id: currentWeek.id,
+        days: currentWeek.days
+      };
+
+      if (typeof templateIndex === "number") {
+        payload.templateIndex = templateIndex;
+      }
+
       const response = await fetch("/api/week/new", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: currentWeek.id, days: currentWeek.days })
+        body: JSON.stringify(payload)
       });
       if (!response.ok) {
         throw new Error(`Request failed with status ${response.status}`);
@@ -330,15 +562,19 @@ export default function HomePage() {
       pendingRef.current = false;
       initialLoadRef.current = true;
       setWeek(data.week);
+      setSelectedPlanIndex(data.week.templateIndex);
       setActiveDayIndex(0);
       setSaveState("saved");
       setError(null);
-      setNotice("New week loaded! Your previous week was archived.");
+      setNotice(successMessage ?? "New week loaded. Your previous week was archived.");
     } catch (err) {
       console.error(err);
       setError("Unable to start a new week. Please try again.");
       setSaveState("error");
       setNotice(null);
+      if (typeof templateIndex === "number") {
+        setSelectedPlanIndex(currentWeek.templateIndex);
+      }
     } finally {
       setNewWeekLoading(false);
     }
@@ -358,15 +594,77 @@ export default function HomePage() {
     });
   }
 
-  function handleExport() {
+  function handlePlanSelect(event: ChangeEvent<HTMLSelectElement>) {
     if (!week) return;
-    exportWeekToCsv(week);
+    const nextIndex = Number.parseInt(event.target.value, 10);
+    if (Number.isNaN(nextIndex)) {
+      return;
+    }
+    setSelectedPlanIndex(nextIndex);
+    if (nextIndex === week.templateIndex) {
+      setConfirmState(null);
+      return;
+    }
+
+    const option = PLAN_OPTIONS.find((item) => item.value === nextIndex);
+
+    setConfirmState({
+      message: option
+        ? `Switch to the ${option.label} plan? Your current week will be archived.`
+        : "Switch to the selected plan? Your current week will be archived.",
+      confirmLabel: "Switch plan",
+      onConfirm: () => {
+        setConfirmState(null);
+        void startNewWeek(
+          week,
+          nextIndex,
+          option ? `${option.label} plan ready. Your previous week was archived.` : undefined
+        );
+      }
+    });
   }
 
-  function handlePrint() {
-    if (typeof window !== "undefined") {
-      window.print();
+  async function handleShare() {
+    if (!week) return;
+
+    setNotice(null);
+
+    const summary = buildWeekShareSummary(week);
+
+    if (typeof navigator !== "undefined" && "share" in navigator) {
+      const shareNavigator = navigator as Navigator & {
+        share: (data: ShareData) => Promise<void>;
+        canShare?: (data: ShareData) => boolean;
+      };
+
+      const shareData: ShareData = {
+        title: `Fitmotion · Week of ${week.weekOf}`,
+        text: summary
+      };
+
+      try {
+        if (!shareNavigator.canShare || shareNavigator.canShare(shareData)) {
+          await shareNavigator.share(shareData);
+          setNotice("Share sheet opened — send it to complete.");
+          return;
+        }
+      } catch (error) {
+        const domError = error as DOMException | undefined;
+        if (domError?.name === "AbortError") {
+          return;
+        }
+        console.error("Share failed", error);
+      }
     }
+
+    const copied = await copyToClipboard(summary);
+
+    if (copied) {
+      setNotice("Week summary copied. Paste it anywhere to share.");
+      return;
+    }
+
+    setError("Sharing isn't supported in this browser. Try copying your progress manually.");
   }
 
   if (loading && !week) {
@@ -380,28 +678,54 @@ export default function HomePage() {
   if (!week) {
     return (
       <div className="wrap">
-        <h1>30-Min Gym Checklist — Beginner (RPE ~6)</h1>
-        <p className="sub">We couldn't load your workouts.</p>
-        {error && <p className="sub dangerc">{error}</p>}
+        <header className="hero home-hero">
+          <div className="home-hero__layout home-hero__layout--simple">
+            {heroBrand}
+            <div className="home-hero__plan-summary home-hero__plan-summary--empty">
+              <p className="home-hero__plan-title">We couldn’t load your workouts.</p>
+              <p className="home-hero__description">
+                Try refreshing the page and we’ll get your plan ready.
+              </p>
+            </div>
+            {heroActions}
+          </div>
+        </header>
+        {error && (
+          <div className="banner error">
+            <span>{error}</span>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
     <div className="wrap">
-      <header>
-        <div>
-          <h1>30-Min Gym Checklist — Beginner (RPE ~6)</h1>
-          <div className="sub">
-            3 days/week • “Somewhat hard, still comfortable” • Auto-saves to your account
+      <header className="hero home-hero">
+        <div className="home-hero__layout">
+          {heroBrand}
+          <label className="home-field home-hero__field home-hero__level" htmlFor="plan-level">
+            <span>Level</span>
+            <select
+              className="in home-hero__select"
+              id="plan-level"
+              onChange={handlePlanSelect}
+              value={String(selectedPlanIndex)}
+              disabled={newWeekLoading}
+            >
+              {PLAN_OPTIONS.map((option) => (
+                <option key={option.value} value={String(option.value)}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="home-hero__plan-summary">
+            <p className="home-hero__plan-label">{currentPlanOption.label} plan</p>
+            <p className="home-hero__plan-title">{week.templateTitle}</p>
+            <p className="home-hero__description">{week.description}</p>
           </div>
-        </div>
-        <div className="legend">
-          <span className="badge">
-            <strong>RPE 6</strong> ≈ 4 reps in reserve
-          </span>
-          <span className="badge">Breathe smooth</span>
-          <span className="badge">No maxing out</span>
+          {heroActions}
         </div>
       </header>
 
@@ -441,95 +765,135 @@ export default function HomePage() {
 
       <div className="sticky-actions">
         <div className="topbar">
-          <div className="tab-group">
-            {week.days.map((day, idx) => (
-              <button
-                key={day.id}
-                className={classNames("pill", idx === activeDayIndex && "active")}
-                onClick={() => setActiveDayIndex(idx)}
-                title={day.name}
-                type="button"
-              >
-                {day.shortName}
-              </button>
-            ))}
-            <span className="pill">Week of {week.weekOf}</span>
-            <span className="pill template-pill" title={week.description}>
-              {week.templateTitle}
-            </span>
+          <div className="topbar__primary">
+            <h2 className="topbar__title">
+              Today’s Plan
+            </h2>
+            <div className="tab-scroll">
+            <div className="tab-group">
+              {week.days.map((day, idx) => (
+                <button
+                  key={day.id}
+                  className={classNames("pill", idx === activeDayIndex && "active")}
+                    onClick={() => setActiveDayIndex(idx)}
+                    title={day.name}
+                    type="button"
+                  >
+                    {day.shortName}
+                  </button>
+                ))}
+                <span className="pill">Week of {week.weekOf}</span>
+              </div>
+            </div>
           </div>
-          <span className="spacer" />
-          <span className={getStatusClass(saveState)}>{formatStatus(saveState)}</span>
-          <button className="btn" onClick={handlePrint} type="button" title="Print or Save as PDF">
-            🖨️ Print
-          </button>
-          <button className="btn" onClick={handleExport} type="button" title="Export your data as CSV">
-            ⬇️ Export CSV
-          </button>
-          <button
-            className="btn warn"
-            onClick={handleNewWeek}
-            type="button"
-            title="Archive current data and start fresh"
-            disabled={newWeekLoading}
-          >
-            {newWeekLoading ? "⏳ Loading…" : "🗓️ New Week"}
-          </button>
-          <button
-            className="btn danger"
-            onClick={handleResetDay}
-            type="button"
-            title="Clear the current day only"
-          >
-            ♻️ Reset Day
-          </button>
+          <div className="topbar__secondary">
+            <span className={getStatusClass(saveState)}>{formatStatus(saveState)}</span>
+            <div className="topbar__actions">
+              <button
+                aria-label="Share week summary"
+                className="btn"
+                onClick={() => {
+                  void handleShare();
+                }}
+                type="button"
+                title="Share a summary of your progress"
+              >
+                <span aria-hidden>📤</span>
+                <span className="sr-only">Share</span>
+              </button>
+              <button
+                className="btn warn"
+                onClick={handleNewWeek}
+                type="button"
+                title="Archive current data and start fresh"
+                disabled={newWeekLoading}
+              >
+                {newWeekLoading ? "⏳ Loading…" : "🗓️ New Week"}
+              </button>
+              <button
+                className="btn danger"
+                onClick={handleResetDay}
+                type="button"
+                title="Clear the current day only"
+              >
+                ♻️ Reset Day
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="grid">
         <div className="card">
-          <h2>Today's Plan</h2>
+          <h2 className="card-title card-title--desktop">Today’s Plan</h2>
           {!activeDay ? (
             <p>No day selected.</p>
           ) : (
             <div>
-              {activeDay.exercises.map((exercise, exerciseIndex) => (
-                <div className="exercise" key={`${exercise.name}-${exerciseIndex}`}>
-                  <header>
-                    <h3>
-                      {exercise.name}{" "}
-                      <span className="muted small">({exercise.target})</span>
-                    </h3>
-                  </header>
-                  <div className="how">{exercise.how}</div>
-                  <div className="sets">
-                    <table>
+              {activeDay.exercises.map((exercise, exerciseIndex) => {
+                const metricLabel = exercise.type === "seconds" ? "Seconds" : "Reps";
+
+                return (
+                  <div className="exercise" key={`${exercise.name}-${exerciseIndex}`}>
+                    <header>
+                      <div className="exercise__title">
+                        <h3>
+                          {exercise.name}{" "}
+                          <span className="muted small">({exercise.target})</span>
+                        </h3>
+                        {exercise.suggestedWeight && (
+                          <p className="muted small exercise__suggested">
+                            Suggested: {exercise.suggestedWeight}
+                          </p>
+                        )}
+                      </div>
+                    </header>
+                    <details className="how">
+                      <summary>Form cues</summary>
+                      <p>{exercise.how}</p>
+                    </details>
+                    <div className="sets">
+                      <table className="tracker-table">
                       <thead>
                         <tr>
                           <th>Set</th>
                           <th>Weight</th>
-                          <th>{exercise.type === "seconds" ? "Seconds" : "Reps"}</th>
+                          <th>{metricLabel}</th>
                           <th>RPE</th>
-                          <th>Done</th>
                         </tr>
                       </thead>
                       <tbody>
                         {exercise.sets.map((set, setIndex) => (
                           <tr key={`${exercise.name}-${setIndex}`} className={set.done ? "done" : undefined}>
-                            <td>{set.set}</td>
-                            <td>
+                            <td data-label="Set">
+                              <div className="set-cell">
+                                <span className="set-cell__number">{set.set}</span>
+                                <label className="set-cell__check">
+                                  <input
+                                    className="chk"
+                                    type="checkbox"
+                                    checked={set.done}
+                                    onChange={(event) =>
+                                      updateSet(activeDayIndex, exerciseIndex, setIndex, "done", event.target.checked)
+                                    }
+                                  />
+                                  <span className="sr-only">Done</span>
+                                </label>
+                              </div>
+                            </td>
+                            <td data-label="Weight">
                               <input
                                 className="in"
                                 type="text"
                                 inputMode="decimal"
-                                placeholder="lbs"
+                                placeholder={exercise.suggestedWeight || "lbs"}
                                 value={set.weight}
                                 onChange={(event) =>
                                   updateSet(activeDayIndex, exerciseIndex, setIndex, "weight", event.target.value)
                                 }
                               />
                             </td>
-                            <td>
+                            <td data-label={metricLabel}>
                               <input
                                 className="in"
                                 type="text"
@@ -541,7 +905,7 @@ export default function HomePage() {
                                 }
                               />
                             </td>
-                            <td>
+                            <td data-label="RPE">
                               <select
                                 className="in"
                                 value={set.rpe}
@@ -556,57 +920,24 @@ export default function HomePage() {
                                 <option value="8">8</option>
                               </select>
                             </td>
-                            <td>
-                              <input
-                                className="chk"
-                                type="checkbox"
-                                checked={set.done}
-                                onChange={(event) =>
-                                  updateSet(activeDayIndex, exerciseIndex, setIndex, "done", event.target.checked)
-                                }
-                              />
-                            </td>
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                      </table>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
-        <div className="card">
-          <h2>How to Use (Beginner-friendly)</h2>
-          <div className="tip">
-            <p>
-              <strong>RPE ~6</strong> = finish each set like you could do ~4 more reps. No straining or holding your breath.
-            </p>
-            <ul>
-              <li>
-                <strong>1)</strong> Pick your day (Day 1 / Day 2 / Day 3).
-              </li>
-              <li>
-                <strong>2)</strong> For each exercise, fill in <em>weight</em>, <em>reps</em> (or seconds), and optionally your
-                <em> RPE</em>.
-              </li>
-              <li>
-                <strong>3)</strong> Check the box ✅ when a set is done. Data saves automatically.
-              </li>
-              <li>
-                <strong>4)</strong> Tap <em>Print</em> to save a PDF, or <em>Export CSV</em> to download your data.
-              </li>
-            </ul>
-          </div>
-          <div className="tip" style={{ marginTop: "8px" }}>
-            <p>
-              <strong>Weekly Progress:</strong> If a weight feels easy with smooth form, add 1–2 reps next time or a small weight
-              increase (+2.5–5 lb). If anything hurts or feels “throbby,” rest more or go lighter.
-            </p>
-            <p style={{ marginTop: "8px" }}>
-              <strong>Template:</strong> {week.templateTitle} — {week.description}
-            </p>
-          </div>
+        <div className="card guide-card">
+          <h2>Quick tips</h2>
+          <ul className="guide-list">
+            <li>Pick a day, log your sets, and check them off as you go.</li>
+            <li>Use the Share button 📤 to send the week anywhere.</li>
+            <li>Keep reps smooth with 3–4 in the tank—then load up next time.</li>
+          </ul>
         </div>
       </div>
     </div>

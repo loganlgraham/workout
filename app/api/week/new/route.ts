@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 
 import { getDb } from "@/lib/mongodb";
+import { WEEK_TEMPLATES } from "@/lib/templates";
 import {
   createWeekDocument,
   serializeWeek,
   type WeekDocument,
-  nextTemplateIndex
+  nextTemplateIndex,
+  getNextWeekStart
 } from "@/lib/week";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +16,11 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { id, days } = body as { id?: string; days?: WeekDocument["days"] };
+    const { id, days, templateIndex } = body as {
+      id?: string;
+      days?: WeekDocument["days"];
+      templateIndex?: number;
+    };
 
     if (!id || !Array.isArray(days)) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
@@ -41,8 +47,23 @@ export async function POST(request: Request) {
       }
     );
 
-    const newTemplateIndex = nextTemplateIndex(existing.templateIndex);
-    const fresh = createWeekDocument(newTemplateIndex);
+    let newTemplateIndex: number;
+
+    if (typeof templateIndex === "number") {
+      if (
+        !Number.isInteger(templateIndex) ||
+        templateIndex < 0 ||
+        templateIndex >= WEEK_TEMPLATES.length
+      ) {
+        return NextResponse.json({ error: "Invalid template" }, { status: 400 });
+      }
+      newTemplateIndex = templateIndex;
+    } else {
+      newTemplateIndex = nextTemplateIndex(existing.templateIndex);
+    }
+
+    const nextWeekOf = getNextWeekStart(existing.weekOf);
+    const fresh = createWeekDocument(newTemplateIndex, nextWeekOf);
     const insertResult = await collection.insertOne(fresh);
     const inserted = { ...fresh, _id: insertResult.insertedId };
 

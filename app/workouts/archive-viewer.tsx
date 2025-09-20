@@ -271,6 +271,11 @@ export function ArchiveViewer({ weeks }: ArchiveViewerProps) {
                           <span>{exercise.name}</span>
                           <span className="muted small">({exercise.target})</span>
                         </div>
+                        {exercise.suggestedWeight && (
+                          <div className="exercise-summary-suggested">
+                            Suggested: {exercise.suggestedWeight}
+                          </div>
+                        )}
                         <div className="exercise-summary-how">{exercise.how}</div>
                         <div className="exercise-table-wrap">
                           <table className="exercise-table">

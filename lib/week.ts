@@ -15,6 +15,7 @@ export type ExerciseEntry = {
   target: string;
   how: string;
   type: "reps" | "seconds";
+  suggestedWeight?: string;
   sets: SetEntry[];
 };
 
@@ -59,10 +60,10 @@ export function getMonday(date = new Date()): string {
   return d.toISOString().substring(0, 10);
 }
 
-function buildSets(count: number): SetEntry[] {
+function buildSets(count: number, suggestedWeight?: string): SetEntry[] {
   return Array.from({ length: count }).map((_, index) => ({
     set: index + 1,
-    weight: "",
+    weight: suggestedWeight ?? "",
     repsOrSec: "",
     rpe: "",
     done: false
@@ -83,7 +84,8 @@ export function createWeekDocument(templateIndex: number, weekOf?: string): Week
       target: exercise.target,
       how: exercise.how,
       type: exercise.type,
-      sets: buildSets(exercise.sets)
+      suggestedWeight: exercise.suggestedWeight,
+      sets: buildSets(exercise.sets, exercise.suggestedWeight)
     }))
   }));
 
@@ -101,6 +103,34 @@ export function createWeekDocument(templateIndex: number, weekOf?: string): Week
 }
 
 export function serializeWeek(doc: WithId<WeekDocument>): WeekResponse {
+  const template = getTemplate(doc.templateIndex);
+
+  function resolveTemplateDay(dayId: string, dayName: string) {
+    const prefix = `${doc.templateKey}-`;
+    const bareId = dayId.startsWith(prefix) ? dayId.slice(prefix.length) : dayId;
+    return (
+      template.days.find((candidate) => candidate.id === bareId) ||
+      template.days.find((candidate) => candidate.name === dayName)
+    );
+  }
+
+  function selectSuggestedWeight(
+    dayId: string,
+    dayName: string,
+    exercise: WeekDocument["days"][number]["exercises"][number]
+  ) {
+    if (exercise.suggestedWeight && exercise.suggestedWeight.trim().length > 0) {
+      return exercise.suggestedWeight.trim();
+    }
+
+    const templateDay = resolveTemplateDay(dayId, dayName);
+    const templateExercise = templateDay?.exercises.find(
+      (candidate) => candidate.name === exercise.name
+    );
+
+    return templateExercise?.suggestedWeight?.trim() ?? "";
+  }
+
   return {
     id: doc._id.toString(),
     weekOf: doc.weekOf,
@@ -114,19 +144,33 @@ export function serializeWeek(doc: WithId<WeekDocument>): WeekResponse {
       id: day.id,
       shortName: day.shortName,
       name: day.name,
-      exercises: day.exercises.map((exercise) => ({
-        name: exercise.name,
-        target: exercise.target,
-        how: exercise.how,
-        type: exercise.type,
-        sets: exercise.sets.map((set) => ({
-          set: set.set,
-          weight: set.weight,
-          repsOrSec: set.repsOrSec,
-          rpe: set.rpe,
-          done: set.done
-        }))
-      }))
+      exercises: day.exercises.map((exercise) => {
+        const suggestedWeight = selectSuggestedWeight(day.id, day.name, exercise);
+        const normalizedSuggestion = suggestedWeight.trim();
+        const resolvedSuggestion = normalizedSuggestion.length > 0 ? normalizedSuggestion : undefined;
+
+        return {
+          name: exercise.name,
+          target: exercise.target,
+          how: exercise.how,
+          type: exercise.type,
+          suggestedWeight: resolvedSuggestion,
+          sets: exercise.sets.map((set) => {
+            const hasWeight = typeof set.weight === "string" && set.weight.trim().length > 0;
+            const resolvedWeight = hasWeight
+              ? set.weight
+              : resolvedSuggestion ?? "";
+
+            return {
+              set: set.set,
+              weight: resolvedWeight,
+              repsOrSec: set.repsOrSec,
+              rpe: set.rpe,
+              done: set.done
+            };
+          })
+        };
+      })
     }))
   };
 }

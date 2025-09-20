@@ -8,6 +8,7 @@ import type { DayEntry, WeekResponse } from "@/lib/week";
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 const ACTIVE_DAY_STORAGE_KEY = "rpe6_active_day";
+const USER_STORAGE_KEY = "fitmotion_user";
 
 type FieldKey = "weight" | "repsOrSec" | "rpe" | "done";
 
@@ -15,6 +16,15 @@ type PlanOption = {
   value: number;
   key: string;
   label: string;
+};
+
+type StoredUser = {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAt?: string | null;
 };
 
 const PLAN_OPTIONS: PlanOption[] = [
@@ -170,6 +180,7 @@ export default function HomePage() {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [newWeekLoading, setNewWeekLoading] = useState(false);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
+  const [currentUser, setCurrentUser] = useState<StoredUser | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRef = useRef(false);
   const initialLoadRef = useRef(true);
@@ -210,6 +221,40 @@ export default function HomePage() {
 
     return () => {
       isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    function readUser(raw: string | null) {
+      if (!raw) {
+        setCurrentUser(null);
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(raw) as StoredUser;
+        setCurrentUser(parsed);
+      } catch (storageError) {
+        console.error("Failed to parse stored user", storageError);
+        setCurrentUser(null);
+      }
+    }
+
+    readUser(window.localStorage.getItem(USER_STORAGE_KEY));
+
+    function handleStorage(event: StorageEvent) {
+      if (event.key === USER_STORAGE_KEY) {
+        readUser(event.newValue);
+      }
+    }
+
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
     };
   }, []);
 
@@ -300,6 +345,18 @@ export default function HomePage() {
     const planIndex = week?.templateIndex ?? 0;
     return PLAN_OPTIONS.find((option) => option.value === planIndex) ?? PLAN_OPTIONS[0];
   }, [week?.templateIndex]);
+
+  const greetingName = useMemo(() => {
+    if (!currentUser?.name) {
+      return null;
+    }
+    const trimmed = currentUser.name.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const [first] = trimmed.split(/\s+/);
+    return first ?? trimmed;
+  }, [currentUser?.name]);
 
   function markPending() {
     pendingRef.current = true;
@@ -547,21 +604,37 @@ export default function HomePage() {
             <div className="home-hero__brand">
               <p className="eyebrow">Fitmotion Trainer</p>
               <h1>Weekly Workouts</h1>
+              {greetingName && (
+                <p className="home-hero__welcome">Welcome back, {greetingName}!</p>
+              )}
             </div>
-            <Link className="btn ghost home-hero__link" href="/workouts">
-              <span>View saved weeks</span>
-              <svg
-                aria-hidden="true"
-                focusable="false"
-                viewBox="0 0 20 20"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M5 10h8.17l-2.58-2.59L11 6l5 5-5 5-1.41-1.41L13.17 12H5z"
-                  fill="currentColor"
-                />
-              </svg>
-            </Link>
+            <div className="home-hero__actions">
+              <Link className="btn ghost home-hero__link" href="/workouts">
+                <span>View saved weeks</span>
+                <svg
+                  aria-hidden="true"
+                  focusable="false"
+                  viewBox="0 0 20 20"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M5 10h8.17l-2.58-2.59L11 6l5 5-5 5-1.41-1.41L13.17 12H5z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </Link>
+              <Link className="btn ghost home-hero__link" href="/auth">
+                <span>Log in / Register</span>
+                <svg
+                  aria-hidden="true"
+                  focusable="false"
+                  viewBox="0 0 20 20"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path d="M5 10h8.17l-2.58-2.59L11 6l5 5-5 5-1.41-1.41L13.17 12H5z" fill="currentColor" />
+                </svg>
+              </Link>
+            </div>
           </div>
           <p className="home-hero__description">We couldn’t load your workouts.</p>
         </header>
@@ -581,21 +654,37 @@ export default function HomePage() {
           <div className="home-hero__brand">
             <p className="eyebrow">Fitmotion Trainer</p>
             <h1>Weekly Workouts</h1>
+            {greetingName && (
+              <p className="home-hero__welcome">Welcome back, {greetingName}!</p>
+            )}
           </div>
-          <Link className="btn ghost home-hero__link" href="/workouts">
-            <span>View saved weeks</span>
-            <svg
-              aria-hidden="true"
-              focusable="false"
-              viewBox="0 0 20 20"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M5 10h8.17l-2.58-2.59L11 6l5 5-5 5-1.41-1.41L13.17 12H5z"
-                fill="currentColor"
-              />
-            </svg>
-          </Link>
+          <div className="home-hero__actions">
+            <Link className="btn ghost home-hero__link" href="/workouts">
+              <span>View saved weeks</span>
+              <svg
+                aria-hidden="true"
+                focusable="false"
+                viewBox="0 0 20 20"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M5 10h8.17l-2.58-2.59L11 6l5 5-5 5-1.41-1.41L13.17 12H5z"
+                  fill="currentColor"
+                />
+              </svg>
+            </Link>
+            <Link className="btn ghost home-hero__link" href="/auth">
+              <span>Log in / Register</span>
+              <svg
+                aria-hidden="true"
+                focusable="false"
+                viewBox="0 0 20 20"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path d="M5 10h8.17l-2.58-2.59L11 6l5 5-5 5-1.41-1.41L13.17 12H5z" fill="currentColor" />
+              </svg>
+            </Link>
+          </div>
         </div>
         <div className="home-hero__controls">
           <label className="home-field home-hero__field" htmlFor="plan-level">
@@ -729,10 +818,17 @@ export default function HomePage() {
                 return (
                   <div className="exercise" key={`${exercise.name}-${exerciseIndex}`}>
                     <header>
-                      <h3>
-                        {exercise.name}{" "}
-                        <span className="muted small">({exercise.target})</span>
-                      </h3>
+                      <div className="exercise__title">
+                        <h3>
+                          {exercise.name}{" "}
+                          <span className="muted small">({exercise.target})</span>
+                        </h3>
+                        {exercise.suggestedWeight && (
+                          <p className="muted small exercise__suggested">
+                            Suggested: {exercise.suggestedWeight}
+                          </p>
+                        )}
+                      </div>
                     </header>
                     <details className="how">
                       <summary>Form cues</summary>
@@ -746,19 +842,33 @@ export default function HomePage() {
                           <th>Weight</th>
                           <th>{metricLabel}</th>
                           <th>RPE</th>
-                          <th>Done</th>
                         </tr>
                       </thead>
                       <tbody>
                         {exercise.sets.map((set, setIndex) => (
                           <tr key={`${exercise.name}-${setIndex}`} className={set.done ? "done" : undefined}>
-                            <td data-label="Set">{set.set}</td>
+                            <td data-label="Set">
+                              <div className="set-cell">
+                                <span className="set-cell__number">{set.set}</span>
+                                <label className="set-cell__check">
+                                  <input
+                                    className="chk"
+                                    type="checkbox"
+                                    checked={set.done}
+                                    onChange={(event) =>
+                                      updateSet(activeDayIndex, exerciseIndex, setIndex, "done", event.target.checked)
+                                    }
+                                  />
+                                  <span className="sr-only">Done</span>
+                                </label>
+                              </div>
+                            </td>
                             <td data-label="Weight">
                               <input
                                 className="in"
                                 type="text"
                                 inputMode="decimal"
-                                placeholder="lbs"
+                                placeholder={exercise.suggestedWeight || "lbs"}
                                 value={set.weight}
                                 onChange={(event) =>
                                   updateSet(activeDayIndex, exerciseIndex, setIndex, "weight", event.target.value)
@@ -791,16 +901,6 @@ export default function HomePage() {
                                 <option value="7">7</option>
                                 <option value="8">8</option>
                               </select>
-                            </td>
-                            <td data-label="Done">
-                              <input
-                                className="chk"
-                                type="checkbox"
-                                checked={set.done}
-                                onChange={(event) =>
-                                  updateSet(activeDayIndex, exerciseIndex, setIndex, "done", event.target.checked)
-                                }
-                              />
                             </td>
                           </tr>
                         ))}

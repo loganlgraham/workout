@@ -636,6 +636,32 @@ export default function HomePage() {
                   />
                 </svg>
               </Link>
+              <Link className="btn ghost home-hero__link" href="/progress">
+                <span>Progress insights</span>
+                <svg
+                  aria-hidden="true"
+                  focusable="false"
+                  viewBox="0 0 20 20"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M3.5 13.5 7.75 9.25 11 12.5 16.5 7"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.8"
+                  />
+                  <path
+                    d="M16.5 11V7h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.8"
+                  />
+                </svg>
+              </Link>
               <Link className="btn ghost home-hero__link" href="/auth">
                 <span>Log in / Register</span>
                 <svg
@@ -695,6 +721,32 @@ export default function HomePage() {
                 <path
                   d="M5 10h8.17l-2.58-2.59L11 6l5 5-5 5-1.41-1.41L13.17 12H5z"
                   fill="currentColor"
+                />
+              </svg>
+            </Link>
+            <Link className="btn ghost home-hero__link" href="/progress">
+              <span>Progress insights</span>
+              <svg
+                aria-hidden="true"
+                focusable="false"
+                viewBox="0 0 20 20"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M3.5 13.5 7.75 9.25 11 12.5 16.5 7"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.8"
+                />
+                <path
+                  d="M16.5 11V7h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.8"
                 />
               </svg>
             </Link>

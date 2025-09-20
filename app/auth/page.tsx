@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 type AuthMode = "login" | "register";
@@ -34,6 +35,7 @@ function formatDateTime(value: string | null | undefined) {
 }
 
 export default function AuthPage() {
+  const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -162,6 +164,11 @@ export default function AuthPage() {
         setEmail(result.user.email);
         setMessage(mode === "register" ? "Account created! You’re signed in." : "Welcome back!");
         setPassword("");
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(result.user));
+        }
+        router.push("/");
+        return;
       }
     } catch (submitError) {
       console.error(`Failed to ${mode}`, submitError);

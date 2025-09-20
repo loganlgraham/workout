@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 
@@ -602,11 +603,23 @@ export default function HomePage() {
         <header className="hero home-hero">
           <div className="home-hero__mast">
             <div className="home-hero__brand">
-              <p className="eyebrow">Fitmotion Trainer</p>
-              <h1>Weekly Workouts</h1>
-              {greetingName && (
-                <p className="home-hero__welcome">Welcome back, {greetingName}!</p>
-              )}
+              <div className="home-hero__logo">
+                <Image
+                  alt="Fitmotion logo"
+                  className="home-hero__logo-image"
+                  height={88}
+                  priority
+                  src="/fitmotion-logo.svg"
+                  width={88}
+                />
+              </div>
+              <div className="home-hero__title">
+                <p className="eyebrow">Fitmotion Trainer</p>
+                <h1>Weekly Workouts</h1>
+                {greetingName && (
+                  <p className="home-hero__welcome">Welcome back, {greetingName}!</p>
+                )}
+              </div>
             </div>
             <div className="home-hero__actions">
               <Link className="btn ghost home-hero__link" href="/workouts">
@@ -652,11 +665,23 @@ export default function HomePage() {
       <header className="hero home-hero">
         <div className="home-hero__mast">
           <div className="home-hero__brand">
-            <p className="eyebrow">Fitmotion Trainer</p>
-            <h1>Weekly Workouts</h1>
-            {greetingName && (
-              <p className="home-hero__welcome">Welcome back, {greetingName}!</p>
-            )}
+            <div className="home-hero__logo">
+              <Image
+                alt="Fitmotion logo"
+                className="home-hero__logo-image"
+                height={88}
+                priority
+                src="/fitmotion-logo.svg"
+                width={88}
+              />
+            </div>
+            <div className="home-hero__title">
+              <p className="eyebrow">Fitmotion Trainer</p>
+              <h1>Weekly Workouts</h1>
+              {greetingName && (
+                <p className="home-hero__welcome">Welcome back, {greetingName}!</p>
+              )}
+            </div>
           </div>
           <div className="home-hero__actions">
             <Link className="btn ghost home-hero__link" href="/workouts">
